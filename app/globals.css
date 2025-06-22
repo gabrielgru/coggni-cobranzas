@@ -98,9 +98,7 @@ input[type=number] {
 
 /* Theme Toggle */
 .theme-toggle {
-  position: absolute;
-  top: 20px;
-  right: 20px;
+  position: relative;
   width: 56px;
   height: 32px;
   background-color: var(--gray-300);
