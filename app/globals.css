@@ -96,6 +96,17 @@ input[type=number] {
   position: relative;
 }
 
+/* Header Controls - NUEVO CONTENEDOR */
+.header-controls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 100;
+}
+
 /* Theme Toggle */
 .theme-toggle {
   position: relative;
@@ -484,6 +495,51 @@ h2 {
   background-color: rgba(248, 113, 113, 0.2);
   border-color: var(--error);
   color: var(--error);
+}
+
+/* NUEVO: Estilos unificados para los ticks de validación */
+.validation-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.validation-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.validation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.validation-details {
+  margin-top: 8px;
+}
+
+.download-report-btn {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: var(--white);
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.download-report-btn:hover {
+  background-color: var(--secondary-color);
+  transform: translateY(-1px);
 }
 
 /* Column tags/chips */
@@ -1113,16 +1169,32 @@ input:checked + .toggle-slider:before {
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive */
-@media (max-width: 640px) {
+/* Responsive - ACTUALIZADO PARA MOBILE */
+@media (max-width: 768px) {
   .container {
     padding: 24px;
     padding-top: 60px;
   }
   
-  .theme-toggle {
+  /* Fix para header controls en mobile */
+  .header-controls {
     top: 16px;
     right: 16px;
+    gap: 8px;
+  }
+  
+  /* Asegurar que el language selector y theme toggle se mantengan horizontales */
+  .header-controls {
+    flex-direction: row !important;
+    align-items: center !important;
+  }
+  
+  .language-selector {
+    order: 1;
+  }
+  
+  .theme-toggle {
+    order: 2;
   }
   
   .strategy-cards {
@@ -1158,6 +1230,18 @@ input:checked + .toggle-slider:before {
   .optional-badge {
     font-size: 11px;
     padding: 2px 6px;
+  }
+}
+
+/* Media query específico para pantallas muy pequeñas */
+@media (max-width: 480px) {
+  .header-controls {
+    gap: 6px;
+  }
+  
+  .container {
+    padding: 16px;
+    padding-top: 56px;
   }
 }
 

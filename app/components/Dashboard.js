@@ -212,16 +212,8 @@ export default function Dashboard() {
   return (
     <div className="app-container">
       <div className="container">
-        <div style={{ 
-          position: 'absolute', 
-          top: '20px', 
-          right: '20px', 
-          display: 'flex', 
-          flexDirection: 'row', 
-          gap: '12px', 
-          alignItems: 'center',
-          zIndex: 100 
-        }}>
+        {/* Header controls con mejor estructura para mobile */}
+        <div className="header-controls">
           {empresaActual.idiomas_disponibles.length > 1 && <LanguageSelector />}
           <ThemeToggle />
         </div>
@@ -460,19 +452,19 @@ export default function Dashboard() {
               <h3>{textos.resumenConfig}</h3>
               <div className="summary-content">
                 <div className="summary-item">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="validation-icon">
                     <path d="M9 11l3 3L22 4"/>
                   </svg>
                   <span><strong>{textos.archivo}:</strong> {selectedFile.name}</span>
                 </div>
                 <div className="summary-item">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="validation-icon">
                     <path d="M9 11l3 3L22 4"/>
                   </svg>
                   <span><strong>{textos.estrategia}:</strong> {getStrategyName(strategy)}</span>
                 </div>
                 <div className="summary-item">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="validation-icon">
                     <path d="M9 11l3 3L22 4"/>
                   </svg>
                   <span>
@@ -481,7 +473,7 @@ export default function Dashboard() {
                 </div>
                 {selectedContactsFile && (
                   <div className="summary-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="validation-icon">
                       <path d="M9 11l3 3L22 4"/>
                     </svg>
                     <span><strong>{textos.contactos}:</strong> {selectedContactsFile.name}</span>
