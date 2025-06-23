@@ -145,6 +145,13 @@ export default function Dashboard() {
       formData.append('estrategia_envio', strategy);
       formData.append('dias_anticipacion_vencimiento', includeUpcoming ? daysInput : 0);
       formData.append('timestamp', new Date().toISOString());
+	  
+	  // NUEVO: Agregar información de la empresa
+	  formData.append('empresa_id', empresaActual.id);
+	  formData.append('empresa_nombre', empresaActual.nombre);
+	  formData.append('empresa_monedas', JSON.stringify(empresaActual.monedas));
+	  
+	  
       
       if (selectedContactsFile) {
         formData.append('contactsFile', selectedContactsFile);
