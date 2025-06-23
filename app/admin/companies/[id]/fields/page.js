@@ -10,22 +10,32 @@ export default function FieldMappingPage() {
   const companyId = params.id;
   
   const [company, setCompany] = useState(null);
-  const [mappings, setMappings] = useState({});
+  const [invoiceMappings, setInvoiceMappings] = useState({});
+  const [contactMappings, setContactMappings] = useState({});
+  const [activeTab, setActiveTab] = useState('invoices');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // Default field types that every company needs
-  const requiredFields = [
-    { key: 'customer_code', label: 'Código Cliente', required: true },
-    { key: 'customer_name', label: 'Nombre/Razón Social', required: true },
-    { key: 'balance', label: 'Saldo/Importe', required: true },
-    { key: 'document', label: 'Nº Documento/Factura', required: true },
-    { key: 'currency', label: 'Moneda', required: false },
-    { key: 'due_date', label: 'Fecha Vencimiento', required: false },
-    { key: 'reference', label: 'Referencia', required: false },
-    { key: 'email', label: 'Email', required: false },
-    { key: 'phone', label: 'Teléfono', required: false }
+  // Invoice file fields (Ficha Facturas)
+  const invoiceFields = [
+    { key: 'codigo', label: 'Código Cliente', required: true },
+    { key: 'nombre', label: 'Nombre/Razón Social', required: true },
+    { key: 'saldo', label: 'Saldo/Importe', required: true },
+    { key: 'docum', label: 'Nº Documento/Factura', required: true },
+    { key: 'mon', label: 'Moneda', required: false },
+    { key: 'vencim', label: 'Fecha Vencimiento', required: false },
+    { key: 'referencia', label: 'Referencia', required: false }
+  ];
+
+  // Contact file fields (Ficha Contactos)
+  const contactFields = [
+    { key: 'codigo', label: 'Código Cliente', required: true },
+    { key: 'nombre', label: 'Nombre/Razón Social', required: true },
+    { key: 'email', label: 'Email', required: true },
+    { key: 'telefono', label: 'Teléfono', required: true },
+    { key: 'contacto1', label: 'Contacto 1', required: false },
+    { key: 'contacto2', label: 'Contacto 2', required: false }
   ];
 
   useEffect(() => {
@@ -51,29 +61,47 @@ export default function FieldMappingPage() {
           .eq('company_id', companyId);
 
         if (!error && existingMappings) {
-          // Convert array to object for easier access
-          const mappingsObj = {};
+          // Separate mappings by type
+          const invoiceMap = {};
+          const contactMap = {};
+          
           existingMappings.forEach(mapping => {
-            mappingsObj[mapping.field_type] = mapping.source_column;
+            if (mapping.field_type.startsWith('invoice_')) {
+              invoiceMap[mapping.field_type.replace('invoice_', '')] = mapping.source_column;
+            } else if (mapping.field_type.startsWith('contact_')) {
+              contactMap[mapping.field_type.replace('contact_', '')] = mapping.source_column;
+            }
           });
-          setMappings(mappingsObj);
+          
+          setInvoiceMappings(invoiceMap);
+          setContactMappings(contactMap);
         }
       }
 
       // Set default mappings if none exist
-      if (Object.keys(mappings).length === 0) {
-        const defaultMappings = {
-          customer_code: 'Código',
-          customer_name: 'Nombre',
-          balance: 'Saldo',
-          document: 'Docum',
-          currency: 'Mon',
-          due_date: 'Vencim',
-          reference: 'Referencia',
-          email: 'Email',
-          phone: 'Teléfono'
+      if (Object.keys(invoiceMappings).length === 0) {
+        const defaultInvoiceMappings = {
+          codigo: 'Código',
+          nombre: 'Nombre',
+          saldo: 'Saldo',
+          docum: 'Docum',
+          mon: 'Mon',
+          vencim: 'Vencim',
+          referencia: 'Referencia'
         };
-        setMappings(defaultMappings);
+        setInvoiceMappings(defaultInvoiceMappings);
+      }
+
+      if (Object.keys(contactMappings).length === 0) {
+        const defaultContactMappings = {
+          codigo: 'Código',
+          nombre: 'Nombre',
+          email: 'Email',
+          telefono: 'Teléfono',
+          contacto1: 'Contacto 1',
+          contacto2: 'Contacto 2'
+        };
+        setContactMappings(defaultContactMappings);
       }
 
     } catch (error) {
@@ -95,19 +123,36 @@ export default function FieldMappingPage() {
           .delete()
           .eq('company_id', companyId);
 
-        // Insert new mappings
-        const mappingsToInsert = Object.entries(mappings)
-          .filter(([_, value]) => value) // Only save non-empty mappings
-          .map(([fieldType, sourceColumn]) => ({
-            company_id: companyId,
-            field_type: fieldType,
-            source_column: sourceColumn
-          }));
+        // Prepare all mappings
+        const allMappings = [];
+        
+        // Invoice mappings
+        Object.entries(invoiceMappings).forEach(([field, column]) => {
+          if (column) {
+            allMappings.push({
+              company_id: companyId,
+              field_type: `invoice_${field}`,
+              source_column: column
+            });
+          }
+        });
 
-        if (mappingsToInsert.length > 0) {
+        // Contact mappings
+        Object.entries(contactMappings).forEach(([field, column]) => {
+          if (column) {
+            allMappings.push({
+              company_id: companyId,
+              field_type: `contact_${field}`,
+              source_column: column
+            });
+          }
+        });
+
+        // Insert new mappings
+        if (allMappings.length > 0) {
           const { error } = await supabase
             .from('field_mappings')
-            .insert(mappingsToInsert);
+            .insert(allMappings);
 
           if (error) throw error;
         }
@@ -124,8 +169,15 @@ export default function FieldMappingPage() {
     }
   };
 
-  const handleMappingChange = (fieldKey, value) => {
-    setMappings(prev => ({
+  const handleInvoiceMappingChange = (fieldKey, value) => {
+    setInvoiceMappings(prev => ({
+      ...prev,
+      [fieldKey]: value
+    }));
+  };
+
+  const handleContactMappingChange = (fieldKey, value) => {
+    setContactMappings(prev => ({
       ...prev,
       [fieldKey]: value
     }));
@@ -133,7 +185,7 @@ export default function FieldMappingPage() {
 
   const styles = {
     container: {
-      maxWidth: '800px',
+      maxWidth: '900px',
       margin: '0 auto',
       padding: '40px 20px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
@@ -152,6 +204,31 @@ export default function FieldMappingPage() {
       color: '#6b7280',
       margin: '0'
     },
+    tabs: {
+      display: 'flex',
+      gap: '4px',
+      marginBottom: '24px',
+      background: '#f3f4f6',
+      padding: '4px',
+      borderRadius: '10px'
+    },
+    tab: {
+      flex: 1,
+      padding: '12px 24px',
+      background: 'transparent',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '15px',
+      fontWeight: '600',
+      color: '#6b7280',
+      cursor: 'pointer',
+      transition: 'all 0.2s'
+    },
+    tabActive: {
+      background: '#ffffff',
+      color: '#1a1a1a',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+    },
     card: {
       background: '#ffffff',
       border: '2px solid #e5e7eb',
@@ -163,18 +240,23 @@ export default function FieldMappingPage() {
       fontSize: '20px',
       fontWeight: '600',
       color: '#1a1a1a',
+      marginBottom: '8px'
+    },
+    sectionDescription: {
+      fontSize: '14px',
+      color: '#6b7280',
       marginBottom: '24px'
     },
     fieldGrid: {
       display: 'grid',
-      gap: '20px'
+      gap: '16px'
     },
     fieldRow: {
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
       gap: '16px',
       alignItems: 'center',
-      padding: '16px',
+      padding: '14px 16px',
       background: '#f9fafb',
       borderRadius: '8px',
       border: '1px solid #e5e7eb'
@@ -212,9 +294,6 @@ export default function FieldMappingPage() {
       outline: 'none',
       transition: 'border-color 0.2s'
     },
-    inputFocus: {
-      borderColor: '#3b82f6'
-    },
     helpSection: {
       background: '#f0f9ff',
       border: '1px solid #bae6fd',
@@ -226,7 +305,10 @@ export default function FieldMappingPage() {
       fontSize: '14px',
       fontWeight: '600',
       color: '#0369a1',
-      marginBottom: '8px'
+      marginBottom: '8px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px'
     },
     helpText: {
       fontSize: '14px',
@@ -301,7 +383,7 @@ export default function FieldMappingPage() {
       <div style={styles.header}>
         <h1 style={styles.title}>Mapeo de Campos</h1>
         <p style={styles.subtitle}>
-          Configura cómo se mapean las columnas del Excel para {company?.name}
+          Configura cómo se mapean las columnas de los archivos Excel para {company?.name}
         </p>
       </div>
 
@@ -314,46 +396,116 @@ export default function FieldMappingPage() {
         </div>
       )}
 
-      <div style={styles.helpSection}>
-        <h3 style={styles.helpTitle}>💡 Cómo funciona</h3>
-        <p style={styles.helpText}>
-          Define qué nombre tienen las columnas en los archivos Excel/CSV que subirán los usuarios.
-          Por ejemplo, si en el Excel la columna del código de cliente se llama "CodCliente", 
-          escribe "CodCliente" en el campo correspondiente.
-        </p>
+      <div style={styles.tabs}>
+        <button
+          style={{
+            ...styles.tab,
+            ...(activeTab === 'invoices' ? styles.tabActive : {})
+          }}
+          onClick={() => setActiveTab('invoices')}
+        >
+          📄 Ficha Facturas
+        </button>
+        <button
+          style={{
+            ...styles.tab,
+            ...(activeTab === 'contacts' ? styles.tabActive : {})
+          }}
+          onClick={() => setActiveTab('contacts')}
+        >
+          👥 Ficha Contactos
+        </button>
       </div>
 
-      <div style={styles.card}>
-        <h2 style={styles.sectionTitle}>Campos del Sistema → Columnas del Excel</h2>
-        
-        <div style={styles.fieldGrid}>
-          {requiredFields.map((field) => (
-            <div key={field.key} style={styles.fieldRow}>
-              <div>
-                <div style={styles.fieldLabel}>
-                  <span style={styles.fieldName}>{field.label}</span>
-                  {field.required && (
-                    <span style={styles.requiredBadge}>Requerido</span>
-                  )}
+      {activeTab === 'invoices' ? (
+        <>
+          <div style={styles.helpSection}>
+            <h3 style={styles.helpTitle}>
+              📄 Archivo de Facturas/Deudas
+            </h3>
+            <p style={styles.helpText}>
+              Este es el archivo principal que contiene las deudas pendientes de los clientes. 
+              Define qué nombre tienen las columnas en el Excel que subirán los usuarios.
+            </p>
+          </div>
+
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Mapeo de Columnas - Facturas</h2>
+            <p style={styles.sectionDescription}>
+              Indica el nombre exacto de cada columna tal como aparece en el archivo Excel
+            </p>
+            
+            <div style={styles.fieldGrid}>
+              {invoiceFields.map((field) => (
+                <div key={field.key} style={styles.fieldRow}>
+                  <div>
+                    <div style={styles.fieldLabel}>
+                      <span style={styles.fieldName}>{field.label}</span>
+                      {field.required && (
+                        <span style={styles.requiredBadge}>Requerido</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <input
+                    type="text"
+                    value={invoiceMappings[field.key] || ''}
+                    onChange={(e) => handleInvoiceMappingChange(field.key, e.target.value)}
+                    placeholder="Ej: Código, CodCliente, etc."
+                    style={styles.input}
+                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                    onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                  />
                 </div>
-                <div style={styles.fieldDescription}>
-                  Campo interno: {field.key}
-                </div>
-              </div>
-              
-              <input
-                type="text"
-                value={mappings[field.key] || ''}
-                onChange={(e) => handleMappingChange(field.key, e.target.value)}
-                placeholder="Nombre de columna en Excel"
-                style={styles.input}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-              />
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={styles.helpSection}>
+            <h3 style={styles.helpTitle}>
+              👥 Archivo de Contactos (Opcional)
+            </h3>
+            <p style={styles.helpText}>
+              Este archivo se usa para actualizar los datos de contacto (emails y teléfonos) de los clientes. 
+              Solo es necesario cuando hay cambios en la información de contacto.
+            </p>
+          </div>
+
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Mapeo de Columnas - Contactos</h2>
+            <p style={styles.sectionDescription}>
+              Indica el nombre exacto de cada columna tal como aparece en el archivo Excel de contactos
+            </p>
+            
+            <div style={styles.fieldGrid}>
+              {contactFields.map((field) => (
+                <div key={field.key} style={styles.fieldRow}>
+                  <div>
+                    <div style={styles.fieldLabel}>
+                      <span style={styles.fieldName}>{field.label}</span>
+                      {field.required && (
+                        <span style={styles.requiredBadge}>Requerido</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <input
+                    type="text"
+                    value={contactMappings[field.key] || ''}
+                    onChange={(e) => handleContactMappingChange(field.key, e.target.value)}
+                    placeholder="Ej: Email, Correo, etc."
+                    style={styles.input}
+                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                    onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <div style={styles.buttonGroup}>
         <button
