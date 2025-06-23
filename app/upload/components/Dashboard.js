@@ -178,10 +178,10 @@ export default function Dashboard() {
       }
 
       // En producción, aquí haríamos el fetch real
-      // const response = await fetch(empresaActual.webhook_url, {
-      //   method: 'POST',
-      //   body: formData
-      // });
+       const response = await fetch(empresaActual.webhook_url, {
+         method: 'POST',
+         body: formData
+       });
 
       setCurrentProgressStep('completed');
       setStatusMessage({
