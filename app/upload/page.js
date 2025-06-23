@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 
