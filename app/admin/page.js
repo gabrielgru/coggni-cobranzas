@@ -47,249 +47,322 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '400px' 
+      }}>
         <div style={{ fontSize: '18px', color: '#666' }}>Cargando...</div>
       </div>
     );
   }
 
+  const styles = {
+    container: {
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '0 20px'
+    },
+    title: {
+      fontSize: '36px',
+      fontWeight: '700',
+      margin: '0 0 12px 0',
+      background: 'linear-gradient(135deg, #3ca4d4 0%, #043c94 100%)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      letterSpacing: '-0.5px'
+    },
+    subtitle: {
+      fontSize: '18px',
+      color: '#6b7280',
+      margin: '0 0 48px 0',
+      fontWeight: '400'
+    },
+    statsGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+      gap: '24px',
+      marginBottom: '48px'
+    },
+    statCard: {
+      background: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: '16px',
+      padding: '28px',
+      position: 'relative',
+      overflow: 'hidden',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      cursor: 'default',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+    },
+    statCardHover: {
+      transform: 'translateY(-4px)',
+      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+      borderColor: '#3ca4d4'
+    },
+    statIcon: {
+      width: '56px',
+      height: '56px',
+      borderRadius: '14px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '28px',
+      marginBottom: '20px',
+      fontWeight: '400'
+    },
+    statValue: {
+      fontSize: '42px',
+      fontWeight: '700',
+      color: '#111827',
+      margin: '0',
+      letterSpacing: '-1px',
+      lineHeight: '1'
+    },
+    statLabel: {
+      fontSize: '15px',
+      color: '#6b7280',
+      margin: '8px 0 0 0',
+      fontWeight: '500'
+    },
+    section: {
+      background: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: '16px',
+      padding: '32px',
+      marginBottom: '32px',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+    },
+    sectionTitle: {
+      fontSize: '22px',
+      fontWeight: '600',
+      color: '#111827',
+      margin: '0 0 28px 0',
+      letterSpacing: '-0.3px'
+    },
+    actionsGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: '16px'
+    },
+    actionCard: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: '16px',
+      padding: '28px 20px',
+      background: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '14px',
+      textDecoration: 'none',
+      color: '#111827',
+      transition: 'all 0.2s ease',
+      textAlign: 'center',
+      cursor: 'pointer'
+    },
+    actionCardHover: {
+      background: '#ffffff',
+      borderColor: '#3ca4d4',
+      transform: 'translateY(-2px)',
+      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+    },
+    actionIcon: {
+      width: '72px',
+      height: '72px',
+      background: '#e5e7eb',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '32px',
+      transition: 'all 0.3s ease'
+    },
+    actionIconHover: {
+      background: '#dbeafe',
+      transform: 'scale(1.1)'
+    },
+    actionLabel: {
+      fontSize: '17px',
+      fontWeight: '600',
+      letterSpacing: '-0.2px'
+    },
+    emptyState: {
+      textAlign: 'center',
+      padding: '80px 20px',
+      color: '#9ca3af'
+    },
+    emptyIcon: {
+      fontSize: '64px',
+      marginBottom: '20px',
+      opacity: '0.3'
+    },
+    emptyText: {
+      fontSize: '18px',
+      margin: '0'
+    }
+  };
+
+  const [hoveredStat, setHoveredStat] = useState(null);
+  const [hoveredAction, setHoveredAction] = useState(null);
+
+  const iconColors = {
+    companies: { bg: '#dbeafe', color: '#3b82f6' },
+    active: { bg: '#d1fae5', color: '#10b981' },
+    fields: { bg: '#fef3c7', color: '#f59e0b' },
+    processed: { bg: '#e9d5ff', color: '#9333ea' }
+  };
+
   return (
-    <>
-      <style jsx>{`
-        .dashboard-container {
-          max-width: 1200px;
-          margin: 0 auto;
-          animation: fadeIn 0.5s ease-out;
-        }
+    <div style={styles.container}>
+      <h1 style={styles.title}>Panel de Administración</h1>
+      <p style={styles.subtitle}>Bienvenido al centro de control de Coggni</p>
 
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .dashboard-title {
-          font-size: 32px;
-          font-weight: 700;
-          margin: 0 0 8px 0;
-          background: linear-gradient(135deg, #3ca4d4 0%, #043c94 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .dashboard-subtitle {
-          font-size: 16px;
-          color: #666;
-          margin: 0 0 40px 0;
-        }
-
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-          gap: 24px;
-          margin-bottom: 40px;
-        }
-
-        .stat-card {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 16px;
-          padding: 24px;
-          position: relative;
-          overflow: hidden;
-          transition: all 0.3s ease;
-          cursor: default;
-        }
-
-        .stat-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 12px 24px rgba(0,0,0,0.1);
-          border-color: #3ca4d4;
-        }
-
-        .stat-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: linear-gradient(90deg, #3ca4d4, #043c94);
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-
-        .stat-card:hover::before {
-          opacity: 1;
-        }
-
-        .stat-icon {
-          width: 48px;
-          height: 48px;
-          background: #f3f4f6;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 24px;
-          margin-bottom: 16px;
-        }
-
-        .stat-value {
-          font-size: 36px;
-          font-weight: 700;
-          color: #111827;
-          margin: 0;
-        }
-
-        .stat-label {
-          font-size: 14px;
-          color: #6b7280;
-          margin: 4px 0 0 0;
-        }
-
-        .actions-section {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 16px;
-          padding: 32px;
-          margin-bottom: 40px;
-        }
-
-        .section-title {
-          font-size: 20px;
-          font-weight: 600;
-          color: #111827;
-          margin: 0 0 24px 0;
-        }
-
-        .actions-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px;
-        }
-
-        .action-link {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-          padding: 24px;
-          background: #f9fafb;
-          border: 2px solid #e5e7eb;
-          border-radius: 12px;
-          text-decoration: none;
-          color: #111827;
-          transition: all 0.2s ease;
-          text-align: center;
-        }
-
-        .action-link:hover {
-          background: white;
-          border-color: #3ca4d4;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .action-icon {
-          width: 64px;
-          height: 64px;
-          background: #e5e7eb;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 28px;
-          transition: all 0.3s ease;
-        }
-
-        .action-link:hover .action-icon {
-          background: #dbeafe;
-          transform: scale(1.1);
-        }
-
-        .action-label {
-          font-size: 16px;
-          font-weight: 600;
-        }
-
-        .activity-section {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 16px;
-          padding: 32px;
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 60px 20px;
-          color: #9ca3af;
-        }
-
-        .empty-icon {
-          font-size: 48px;
-          margin-bottom: 16px;
-          opacity: 0.5;
-        }
-      `}</style>
-
-      <div className="dashboard-container">
-        <h1 className="dashboard-title">Panel de Administración</h1>
-        <p className="dashboard-subtitle">Bienvenido al centro de control de Coggni</p>
-
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">🏢</div>
-            <h3 className="stat-value">{stats.companies}</h3>
-            <p className="stat-label">Empresas Totales</p>
+      <div style={styles.statsGrid}>
+        <div 
+          style={{
+            ...styles.statCard,
+            ...(hoveredStat === 'companies' ? styles.statCardHover : {})
+          }}
+          onMouseEnter={() => setHoveredStat('companies')}
+          onMouseLeave={() => setHoveredStat(null)}
+        >
+          <div style={{
+            ...styles.statIcon,
+            background: iconColors.companies.bg,
+            color: iconColors.companies.color
+          }}>
+            🏢
           </div>
-
-          <div className="stat-card">
-            <div className="stat-icon" style={{ background: '#d1fae5' }}>✅</div>
-            <h3 className="stat-value">{stats.activeCompanies}</h3>
-            <p className="stat-label">Empresas Activas</p>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon" style={{ background: '#fef3c7' }}>🔤</div>
-            <h3 className="stat-value">{stats.fieldMappings}</h3>
-            <p className="stat-label">Campos Mapeados</p>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon">📊</div>
-            <h3 className="stat-value">{stats.processedToday}</h3>
-            <p className="stat-label">Procesados Hoy</p>
-          </div>
+          <h3 style={styles.statValue}>{stats.companies}</h3>
+          <p style={styles.statLabel}>Empresas Totales</p>
         </div>
 
-        <div className="actions-section">
-          <h2 className="section-title">Acciones Rápidas</h2>
-          <div className="actions-grid">
-            <Link href="/admin/companies" className="action-link">
-              <div className="action-icon">🏢</div>
-              <span className="action-label">Gestionar Empresas</span>
-            </Link>
-            
-            <Link href="/admin/companies/new" className="action-link">
-              <div className="action-icon">➕</div>
-              <span className="action-label">Nueva Empresa</span>
-            </Link>
-            
-            <Link href="/admin/logs" className="action-link">
-              <div className="action-icon">📋</div>
-              <span className="action-label">Ver Logs</span>
-            </Link>
+        <div 
+          style={{
+            ...styles.statCard,
+            ...(hoveredStat === 'active' ? styles.statCardHover : {})
+          }}
+          onMouseEnter={() => setHoveredStat('active')}
+          onMouseLeave={() => setHoveredStat(null)}
+        >
+          <div style={{
+            ...styles.statIcon,
+            background: iconColors.active.bg,
+            color: iconColors.active.color
+          }}>
+            ✅
           </div>
+          <h3 style={styles.statValue}>{stats.activeCompanies}</h3>
+          <p style={styles.statLabel}>Empresas Activas</p>
         </div>
 
-        <div className="activity-section">
-          <h2 className="section-title">Actividad Reciente</h2>
-          <div className="empty-state">
-            <div className="empty-icon">📭</div>
-            <p>No hay actividad reciente</p>
+        <div 
+          style={{
+            ...styles.statCard,
+            ...(hoveredStat === 'fields' ? styles.statCardHover : {})
+          }}
+          onMouseEnter={() => setHoveredStat('fields')}
+          onMouseLeave={() => setHoveredStat(null)}
+        >
+          <div style={{
+            ...styles.statIcon,
+            background: iconColors.fields.bg,
+            color: iconColors.fields.color
+          }}>
+            🔤
           </div>
+          <h3 style={styles.statValue}>{stats.fieldMappings}</h3>
+          <p style={styles.statLabel}>Campos Mapeados</p>
+        </div>
+
+        <div 
+          style={{
+            ...styles.statCard,
+            ...(hoveredStat === 'processed' ? styles.statCardHover : {})
+          }}
+          onMouseEnter={() => setHoveredStat('processed')}
+          onMouseLeave={() => setHoveredStat(null)}
+        >
+          <div style={{
+            ...styles.statIcon,
+            background: iconColors.processed.bg,
+            color: iconColors.processed.color
+          }}>
+            📊
+          </div>
+          <h3 style={styles.statValue}>{stats.processedToday}</h3>
+          <p style={styles.statLabel}>Procesados Hoy</p>
         </div>
       </div>
-    </>
+
+      <div style={styles.section}>
+        <h2 style={styles.sectionTitle}>Acciones Rápidas</h2>
+        <div style={styles.actionsGrid}>
+          <Link 
+            href="/admin/companies" 
+            style={{
+              ...styles.actionCard,
+              ...(hoveredAction === 'companies' ? styles.actionCardHover : {})
+            }}
+            onMouseEnter={() => setHoveredAction('companies')}
+            onMouseLeave={() => setHoveredAction(null)}
+          >
+            <div style={{
+              ...styles.actionIcon,
+              ...(hoveredAction === 'companies' ? styles.actionIconHover : {})
+            }}>
+              🏢
+            </div>
+            <span style={styles.actionLabel}>Gestionar Empresas</span>
+          </Link>
+          
+          <Link 
+            href="/admin/companies/new" 
+            style={{
+              ...styles.actionCard,
+              ...(hoveredAction === 'new' ? styles.actionCardHover : {})
+            }}
+            onMouseEnter={() => setHoveredAction('new')}
+            onMouseLeave={() => setHoveredAction(null)}
+          >
+            <div style={{
+              ...styles.actionIcon,
+              ...(hoveredAction === 'new' ? styles.actionIconHover : {})
+            }}>
+              ➕
+            </div>
+            <span style={styles.actionLabel}>Nueva Empresa</span>
+          </Link>
+          
+          <Link 
+            href="/admin/logs" 
+            style={{
+              ...styles.actionCard,
+              ...(hoveredAction === 'logs' ? styles.actionCardHover : {})
+            }}
+            onMouseEnter={() => setHoveredAction('logs')}
+            onMouseLeave={() => setHoveredAction(null)}
+          >
+            <div style={{
+              ...styles.actionIcon,
+              ...(hoveredAction === 'logs' ? styles.actionIconHover : {})
+            }}>
+              📋
+            </div>
+            <span style={styles.actionLabel}>Ver Logs</span>
+          </Link>
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <h2 style={styles.sectionTitle}>Actividad Reciente</h2>
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>📭</div>
+          <p style={styles.emptyText}>No hay actividad reciente</p>
+        </div>
+      </div>
+    </div>
   );
 }
