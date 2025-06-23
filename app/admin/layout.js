@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import AdminNav from './components/AdminNav';
 import '../globals.css';
-import '../admin-modern.css'; // Cambiado a admin-modern.css
+
 
 export default function AdminLayout({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);

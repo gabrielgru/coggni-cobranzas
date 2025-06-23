@@ -29,3 +29,6 @@ export const supabaseAdmin = supabaseUrl && serviceRoleKey
       }
     )
   : null;
+  
+console.log('Supabase URL from env:', process.env.NEXT_PUBLIC_SUPABASE_URL);  
+  
