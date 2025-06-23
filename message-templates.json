@@ -1,0 +1,12 @@
+{
+  "dental-link": {
+    "whatsapp": {
+      "saludo": "Hola {{nombre}},\n\nLe recordamos el estado de sus facturas pendientes:",
+      "cierre": "Para consultas puede contactarnos:\nTeléfono: 12345678\nEmail: admin@dentallink.com.uy\n\nSaludos cordiales,\nDental Link"
+    },
+    "email": {
+      "apertura": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #1976d2;\">Recordatorio de Pago - Dental Link</h2>\n  <p>Hola {{nombre}},</p>\n  <p>Le recordamos el estado de sus facturas pendientes:</p>",
+      "cierre": "  <div style=\"background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 20px;\">\n    <h4 style=\"margin-top: 0;\">Para consultas puede contactarnos:</h4>\n    <p style=\"margin: 5px 0;\">Teléfono: 12345678<br>\n    Email: admin@dentallink.com.uy</p>\n  </div>\n  \n  <p style=\"margin-top: 20px; color: #666;\">\n    Saludos cordiales,<br>\n    <strong>Dental Link</strong>\n  </p>\n</div>"
+    }
+  }
+}
