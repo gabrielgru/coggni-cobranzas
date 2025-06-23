@@ -11,6 +11,7 @@ export default function AdminLayout({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [navOpen, setNavOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -83,6 +84,10 @@ export default function AdminLayout({ children }) {
     }
   };
 
+  const toggleNav = () => {
+    setNavOpen(!navOpen);
+  };
+
   // Si estamos en login, renderizar solo el children
   if (pathname === '/admin/login') {
     return children;
@@ -145,10 +150,28 @@ export default function AdminLayout({ children }) {
   // Usuario autenticado y es admin
   return (
     <div className="admin-layout">
-      <AdminNav user={user} />
+      <AdminNav user={user} isOpen={navOpen} onToggle={toggleNav} />
       
       <main className="admin-main">
         <header className="admin-header">
+          {/* Botón hamburguesa para mobile */}
+          <button
+            className="nav-toggle"
+            onClick={toggleNav}
+            style={{
+              display: 'none',
+              background: 'none',
+              border: 'none',
+              fontSize: '24px',
+              cursor: 'pointer',
+              padding: '8px',
+              color: 'var(--text-primary)'
+            }}
+            aria-label="Abrir menú"
+          >
+            ☰
+          </button>
+
           <div className="header-title">
             {/* Título dinámico según la página */}
           </div>
