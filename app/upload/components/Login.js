@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { TEXTOS } from '../utils/constants';
+import { useAuth } from '../../contexts/AuthContext';
+import { TEXTOS } from '../../utils/constants';
 
 export default function Login() {
   const [usuario, setUsuario] = useState('');

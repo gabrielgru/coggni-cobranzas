@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { validateFacturasFile, validateContactsFile, generateErrorReport, downloadReport } from '../utils/fileValidation';
-import { useAuth } from '../contexts/AuthContext';
-import { TEXTOS } from '../utils/constants';
+import { validateFacturasFile, validateContactsFile, generateErrorReport, downloadReport } from '../../utils/fileValidation';
+import { useAuth } from '../../contexts/AuthContext';
+import { TEXTOS } from '../../utils/constants';
 
 export default function FileUploadZone({ 
   type = 'facturas', // 'facturas' o 'contactos'

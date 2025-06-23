@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { TEXTOS } from '../utils/constants';
+import { useAuth } from '../../contexts/AuthContext';
+import { TEXTOS } from '../../utils/constants';
 import ThemeToggle from './ThemeToggle';
 import LanguageSelector from './LanguageSelector';
 import FileUploadZone from './FileUploadZone';
