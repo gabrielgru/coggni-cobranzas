@@ -11,6 +11,10 @@ import OptionalSection from './OptionalSection';
 export default function Dashboard() {
   const { usuarioActual, empresaActual, idioma, logout, changeIdioma } = useAuth();
   
+  // TEMPORAL - Debug
+  console.log('Dashboard cargado. Empresa actual:', empresaActual);
+  
+  
   // Estados principales
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedContactsFile, setSelectedContactsFile] = useState(null);
@@ -145,6 +149,19 @@ export default function Dashboard() {
       formData.append('estrategia_envio', strategy);
       formData.append('dias_anticipacion_vencimiento', includeUpcoming ? daysInput : 0);
       formData.append('timestamp', new Date().toISOString());
+	  
+	  
+	  // TEMPORAL - Para debugging
+      console.log('=== ENVIANDO A WEBHOOK ===');
+      console.log('Empresa actual completa:', empresaActual);
+      console.log('Empresa ID:', empresaActual.id);
+      console.log('Empresa Nombre:', empresaActual.nombre);
+      console.log('Empresa Monedas:', empresaActual.monedas);
+	  
+	  
+	  
+	  
+	  
 	  
 	  // NUEVO: Agregar información de la empresa
 	  formData.append('empresa_id', empresaActual.id);
