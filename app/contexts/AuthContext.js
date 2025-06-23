@@ -161,14 +161,18 @@ export function AuthProvider({ children }) {
           }
 
           // 3. Cargar datos de la empresa
+          console.log('Buscando empresa con ID:', userData.company_id);
+          
           const { data: companyData, error: companyError } = await supabase
             .from('companies')
             .select('*')
             .eq('id', userData.company_id)
-            .single();
+            .maybeSingle(); // Cambiado de .single() a .maybeSingle()
+
+          console.log('Resultado empresa:', companyData, 'Error:', companyError);
 
           if (companyError || !companyData) {
-            throw new Error('Empresa no encontrada');
+            throw new Error(`Empresa no encontrada: ${userData.company_id}`);
           }
 
           // 4. Establecer sesión
