@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import AdminNav from './components/AdminNav';
 import '../globals.css';
-import './admin-apple.css';
+import './admin-modern.css'; // Cambiado a admin-modern.css
 
 export default function AdminLayout({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -44,8 +44,6 @@ export default function AdminLayout({ children }) {
       // 1. Verificar si hay sesión activa
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      console.log('Session check:', { session, sessionError });
-
       if (!session) {
         console.log('No session found, redirecting to login');
         setIsAuthenticated(false);
@@ -60,8 +58,6 @@ export default function AdminLayout({ children }) {
         .select('*')
         .eq('email', session.user.email)
         .single();
-
-      console.log('Admin check:', { adminUser, adminError });
 
       if (adminError || !adminUser) {
         console.log('User is not admin');
@@ -137,18 +133,7 @@ export default function AdminLayout({ children }) {
           </p>
           <button
             onClick={() => router.push('/admin/login')}
-            style={{
-              padding: '12px 24px',
-              background: 'var(--primary-color)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
-            onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+            className="btn-primary"
           >
             Ir a Login
           </button>
@@ -159,58 +144,32 @@ export default function AdminLayout({ children }) {
 
   // Usuario autenticado y es admin
   return (
-    <div style={{
-      display: 'flex',
-      minHeight: '100vh',
-      backgroundColor: 'var(--bg-secondary)'
-    }}>
+    <div className="admin-layout">
       <AdminNav user={user} />
-      <main style={{
-        flex: 1,
-        padding: '2rem',
-        marginLeft: '250px',
-        position: 'relative'
-      }}>
-        {/* Header con info del usuario */}
-        <div style={{
-          position: 'absolute',
-          top: '1rem',
-          right: '2rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem'
-        }}>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-            {user?.email}
-          </span>
-          <button
-            onClick={async () => {
-              await supabase.auth.signOut();
-              router.push('/admin/login');
-            }}
-            style={{
-              padding: '8px 16px',
-              background: 'transparent',
-              border: '1px solid var(--border-color)',
-              borderRadius: '6px',
-              color: 'var(--text-secondary)',
-              fontSize: '14px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.borderColor = 'var(--error-color, #dc3545)';
-              e.target.style.color = 'var(--error-color, #dc3545)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.borderColor = 'var(--border-color)';
-              e.target.style.color = 'var(--text-secondary)';
-            }}
-          >
-            Cerrar Sesión
-          </button>
+      
+      <main className="admin-main">
+        <header className="admin-header">
+          <div className="header-title">
+            {/* Título dinámico según la página */}
+          </div>
+          
+          <div className="header-user">
+            <span className="user-email">{user?.email}</span>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                router.push('/admin/login');
+              }}
+              className="btn-logout"
+            >
+              Cerrar Sesión
+            </button>
+          </div>
+        </header>
+
+        <div className="admin-content">
+          {children}
         </div>
-        {children}
       </main>
     </div>
   );
