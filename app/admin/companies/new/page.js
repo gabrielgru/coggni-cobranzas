@@ -62,6 +62,34 @@ export default function NewCompanyPage() {
           setLoading(false);
           return;
         }
+
+        // Crear field mappings por defecto para la nueva empresa
+        const defaultFieldMappings = [
+          // Mappings de facturas (invoice_*)
+          { company_id: formData.id, field_type: 'invoice_codigo', source_column: 'Código' },
+          { company_id: formData.id, field_type: 'invoice_nombre', source_column: 'Nombre' },
+          { company_id: formData.id, field_type: 'invoice_saldo', source_column: 'Saldo' },
+          { company_id: formData.id, field_type: 'invoice_docum', source_column: 'Docum' },
+          { company_id: formData.id, field_type: 'invoice_mon', source_column: 'Mon' },
+          { company_id: formData.id, field_type: 'invoice_vencim', source_column: 'Vencim' },
+          { company_id: formData.id, field_type: 'invoice_referencia', source_column: 'Referencia' },
+          // Mappings de contactos (contact_*)
+          { company_id: formData.id, field_type: 'contact_codigo', source_column: 'Código' },
+          { company_id: formData.id, field_type: 'contact_nombre', source_column: 'Nombre' },
+          { company_id: formData.id, field_type: 'contact_email', source_column: 'Email' },
+          { company_id: formData.id, field_type: 'contact_telefono', source_column: 'Teléfono' },
+          { company_id: formData.id, field_type: 'contact_contacto1', source_column: 'Contacto 1' },
+          { company_id: formData.id, field_type: 'contact_contacto2', source_column: 'Contacto 2' }
+        ];
+
+        const { error: mappingError } = await supabase
+          .from('field_mappings')
+          .insert(defaultFieldMappings);
+
+        if (mappingError) {
+          console.error('Error creating default field mappings:', mappingError);
+          // No detenemos el flujo, la empresa ya fue creada exitosamente
+        }
       }
 
       // Éxito
