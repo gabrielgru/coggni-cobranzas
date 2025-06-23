@@ -12,6 +12,17 @@ export default function AdminLayout({ children }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detectar mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   const router = useRouter();
   const pathname = usePathname();
 

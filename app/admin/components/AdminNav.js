@@ -74,7 +74,8 @@ export default function AdminNav({ isOpen, onToggle }) {
         flexDirection: 'column',
         zIndex: 100,
         transform: isMobile && !isOpen ? 'translateX(-100%)' : 'translateX(0)',
-        transition: 'transform 0.3s ease'
+        transition: 'transform 0.3s ease',
+        boxShadow: isMobile ? '2px 0 10px rgba(0, 0, 0, 0.1)' : 'none'
       }}>
         <div className="nav-header" style={{
           padding: '24px',
