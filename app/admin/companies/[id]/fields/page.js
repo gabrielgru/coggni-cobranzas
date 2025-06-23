@@ -24,7 +24,7 @@ export default function FieldMappingPage() {
     { key: 'saldo', label: 'Saldo/Importe', required: true },
     { key: 'docum', label: 'Nº Documento/Factura', required: true },
     { key: 'mon', label: 'Moneda', required: false },
-    { key: 'vencim', label: 'Fecha Vencimiento', required: false },
+    { key: 'vencim', label: 'Fecha Vencimiento', required: true },
     { key: 'referencia', label: 'Referencia', required: false }
   ];
 
