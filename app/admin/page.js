@@ -13,6 +13,7 @@ export default function AdminDashboard() {
   });
   const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -20,27 +21,56 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
+      setError(null);
+      
       if (!supabase) {
         console.error('Supabase client not initialized');
+        setError('Error de conexión con la base de datos');
         setLoading(false);
         return;
       }
+
+      // Verificar que tenemos sesión activa
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('No active session');
+        setError('No hay sesión activa');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Loading dashboard data for:', session.user.email);
+
       // Cargar estadísticas
-      const { count: companiesCount } = await supabase
+      const { count: companiesCount, error: companiesError } = await supabase
         .from('companies')
         .select('*', { count: 'exact', head: true });
 
-      const { count: mappingsCount } = await supabase
+      if (companiesError) {
+        console.error('Error loading companies:', companiesError);
+        setError(`Error al cargar empresas: ${companiesError.message}`);
+      }
+
+      const { count: mappingsCount, error: mappingsError } = await supabase
         .from('field_mappings')
         .select('*', { count: 'exact', head: true });
 
-      const { data: activeCompanies } = await supabase
+      if (mappingsError) {
+        console.error('Error loading mappings:', mappingsError);
+      }
+
+      const { data: activeCompanies, error: activeError } = await supabase
         .from('companies')
         .select('*')
         .eq('is_active', true);
 
+      if (activeError) {
+        console.error('Error loading active companies:', activeError);
+      }
+
       // Cargar logs recientes
-      const { data: logs } = await supabase
+      const { data: logs, error: logsError } = await supabase
         .from('processing_logs')
         .select(`
           *,
@@ -49,6 +79,11 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
         .limit(5);
 
+      if (logsError) {
+        console.error('Error loading logs:', logsError);
+      }
+
+      // Actualizar estado con los datos obtenidos
       setStats({
         companies: companiesCount || 0,
         fieldMappings: mappingsCount || 0,
@@ -57,15 +92,69 @@ export default function AdminDashboard() {
       });
 
       setRecentLogs(logs || []);
-      setLoading(false);
+      
+      // Log para debug
+      console.log('Dashboard data loaded:', {
+        companies: companiesCount,
+        mappings: mappingsCount,
+        active: activeCompanies?.length,
+        logs: logs?.length
+      });
+
     } catch (error) {
       console.error('Error cargando dashboard:', error);
+      setError('Error inesperado al cargar el dashboard');
+    } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="loading-spinner"></div>;
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '400px'
+      }}>
+        <div className="loading-spinner"></div>
+        <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
+          Cargando dashboard...
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="admin-dashboard">
+        <div style={{
+          background: '#fee',
+          border: '1px solid #fcc',
+          color: '#c00',
+          padding: '1rem',
+          borderRadius: '8px',
+          marginBottom: '2rem'
+        }}>
+          <strong>Error:</strong> {error}
+          <button
+            onClick={loadDashboardData}
+            style={{
+              marginLeft: '1rem',
+              padding: '4px 12px',
+              background: '#c00',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -107,6 +196,24 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Debug info - remover en producción */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          background: '#f0f0f0',
+          padding: '1rem',
+          borderRadius: '8px',
+          marginBottom: '2rem',
+          fontSize: '12px',
+          fontFamily: 'monospace'
+        }}>
+          <strong>Debug Info:</strong><br />
+          Companies: {stats.companies} | 
+          Active: {stats.activeCompanies} | 
+          Mappings: {stats.fieldMappings} | 
+          Logs: {recentLogs.length}
+        </div>
+      )}
 
       {/* Acciones rápidas */}
       <div className="admin-card">
