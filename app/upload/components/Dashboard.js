@@ -7,9 +7,11 @@ import ThemeToggle from './ThemeToggle';
 import LanguageSelector from './LanguageSelector';
 import FileUploadZone from './FileUploadZone';
 import OptionalSection from './OptionalSection';
+import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
   const { usuarioActual, empresaActual, idioma, logout, changeIdioma } = useAuth();
+  const router = useRouter();
   
   // TEMPORAL - Debug
   console.log('Dashboard cargado. Empresa actual:', empresaActual);
@@ -184,20 +186,41 @@ export default function Dashboard() {
        });
 
       setCurrentProgressStep('completed');
+      
+      // Guardar resumen del procesamiento exitoso
+      const resumenProcesamiento = {
+        archivo: selectedFile.name,
+        registros: fileValidationResult.totalRows || 0,
+        registrosValidos: fileValidationResult.validRows || 0,
+        advertencias: fileValidationResult.warnings || 0,
+        estrategia: getStrategyName(strategy),
+        empresa: empresaActual.nombre,
+        timestamp: new Date().toISOString(),
+        diasAnticipacion: includeUpcoming ? daysInput : 0,
+        archivoContactos: selectedContactsFile?.name || null,
+        contactosActualizados: updateContacts,
+        idioma: idioma
+      };
+      
+      // Guardar en localStorage
+      localStorage.setItem('ultimoProcesamiento', JSON.stringify(resumenProcesamiento));
+      
+      // Mostrar mensaje de éxito brevemente antes de redirigir
       setStatusMessage({
         show: true,
         type: 'success',
         title: textos.completado,
-        content: `El proceso de cobranza se ha iniciado correctamente.\n\nEmpresa: ${empresaActual.nombre}\nArchivo: ${selectedFile.name}\nEstrategia: ${getStrategyName(strategy)}`,
-        progress: true
+        content: 'Redirigiendo a página de confirmación...',
+        progress: false
       });
       
-      // Limpiar después de 5 segundos
+      // Redirigir después de un breve delay
       setTimeout(() => {
-        resetForm();
-      }, 5000);
+        router.push('/upload/success');
+      }, 1500);
       
     } catch (error) {
+      // En caso de error, mantener en la misma página
       setStatusMessage({
         show: true,
         type: 'error',
@@ -205,7 +228,6 @@ export default function Dashboard() {
         content: `Ocurrió un error: ${error.message}`,
         progress: false
       });
-    } finally {
       setProcessing(false);
     }
   };
