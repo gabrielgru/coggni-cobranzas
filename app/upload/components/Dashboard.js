@@ -167,7 +167,7 @@ export default function Dashboard() {
 	  formData.append('empresa_id', empresaActual.id);
 	  formData.append('empresa_nombre', empresaActual.nombre);
 	  formData.append('empresa_monedas', JSON.stringify(empresaActual.monedas));
-	  
+	  formData.append('empresa_paises_telefono', JSON.stringify(empresaActual.paises_telefono));
 	  
       
       if (selectedContactsFile) {
