@@ -10,6 +10,7 @@ import '../globals.css';
 export default function AdminLayout({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -30,6 +31,7 @@ export default function AdminLayout({ children }) {
     // Si estamos en la página de login, no verificar auth
     if (pathname === '/admin/login') {
       setLoading(false);
+      setInitializing(false);
       return;
     }
 
@@ -53,6 +55,8 @@ export default function AdminLayout({ children }) {
 
   const checkAuth = async () => {
     try {
+      setInitializing(true);
+      
       // 1. Verificar si hay sesión activa
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
@@ -60,6 +64,7 @@ export default function AdminLayout({ children }) {
         console.log('No session found, redirecting to login');
         setIsAuthenticated(false);
         setLoading(false);
+        setInitializing(false);
         router.push('/admin/login');
         return;
       }
@@ -75,6 +80,7 @@ export default function AdminLayout({ children }) {
         console.log('User is not admin');
         setIsAuthenticated(false);
         setLoading(false);
+        setInitializing(false);
         router.push('/admin/login?error=unauthorized');
         return;
       }
@@ -86,11 +92,13 @@ export default function AdminLayout({ children }) {
         isSuper: adminUser.is_super_admin
       });
       setLoading(false);
+      setInitializing(false);
 
     } catch (error) {
       console.error('Auth check error:', error);
       setIsAuthenticated(false);
       setLoading(false);
+      setInitializing(false);
       router.push('/admin/login');
     }
   };
@@ -104,7 +112,8 @@ export default function AdminLayout({ children }) {
     return children;
   }
 
-  if (loading) {
+  // Mientras se está inicializando/verificando, mostrar loading
+  if (loading || initializing) {
     return (
       <div style={{
         display: 'flex',
@@ -122,7 +131,8 @@ export default function AdminLayout({ children }) {
     );
   }
 
-  if (!isAuthenticated) {
+  // Solo mostrar "no autorizado" si realmente no está autenticado Y no estamos inicializando
+  if (!isAuthenticated && !initializing) {
     return (
       <div style={{
         display: 'flex',
