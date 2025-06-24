@@ -25,7 +25,7 @@ export default function AdminNav({ isOpen, onToggle }) {
     { href: '/admin/fields', label: 'Mapeo de Campos', icon: '🔤' },
     { href: '/admin/payments', label: 'Config. Pagos', icon: '💳' },
     { href: '/admin/templates', label: 'Plantillas', icon: '📝' },
-    { href: '/admin/logs', label: 'Logs', icon: '📋' },
+    { href: '/admin/logs', label: 'Logs de Envío', icon: '📨' },
   ];
 
   const isActive = (href) => {
