@@ -16,12 +16,10 @@ export default function EditCompanyPage() {
     name: '',
     currencies: [],
     languages: [],
-    admin_emails: [], // NUEVO: Array de emails de administrador
     is_active: true
   });
   const [originalId] = useState(companyId); // Store original ID
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [newEmail, setNewEmail] = useState(''); // NUEVO: Para agregar emails
 
   // Available options
   const currencyOptions = ['$', 'U$S', 'EUR', 'R$', 'CLP', 'ARS'];
@@ -46,10 +44,7 @@ export default function EditCompanyPage() {
           .single();
 
         if (!error && data) {
-          setFormData({
-            ...data,
-            admin_emails: data.admin_emails || [] // Asegurar que siempre sea un array
-          });
+          setFormData(data);
         } else {
           // Fallback data
           loadFallbackData();
@@ -74,7 +69,6 @@ export default function EditCompanyPage() {
         name: 'Dental Link',
         currencies: ['$', 'U$S'],
         languages: ['es'],
-        admin_emails: ['admin@dentallink.com'], // NUEVO: Emails de ejemplo
         is_active: true
       },
       'la-perla': {
@@ -82,7 +76,6 @@ export default function EditCompanyPage() {
         name: 'La Perla',
         currencies: ['EUR'],
         languages: ['es'],
-        admin_emails: ['gerencia@laperla.com', 'admin@laperla.com'], // NUEVO
         is_active: true
       },
       'test-company': {
@@ -90,7 +83,6 @@ export default function EditCompanyPage() {
         name: 'Test Company',
         currencies: ['U$S'],
         languages: ['en', 'es'],
-        admin_emails: [], // NUEVO
         is_active: true
       }
     };
@@ -101,47 +93,6 @@ export default function EditCompanyPage() {
     } else {
       setMessage({ type: 'error', text: 'Empresa no encontrada' });
     }
-  };
-
-  // NUEVO: Validar formato de email
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  // NUEVO: Agregar email
-  const addEmail = () => {
-    const trimmedEmail = newEmail.trim().toLowerCase();
-    
-    if (!trimmedEmail) {
-      setMessage({ type: 'error', text: 'Ingresa un email' });
-      return;
-    }
-
-    if (!validateEmail(trimmedEmail)) {
-      setMessage({ type: 'error', text: 'Email inválido' });
-      return;
-    }
-
-    if (formData.admin_emails.includes(trimmedEmail)) {
-      setMessage({ type: 'error', text: 'Este email ya está agregado' });
-      return;
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      admin_emails: [...prev.admin_emails, trimmedEmail]
-    }));
-    setNewEmail('');
-    setMessage({ type: '', text: '' });
-  };
-
-  // NUEVO: Eliminar email
-  const removeEmail = (emailToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      admin_emails: prev.admin_emails.filter(email => email !== emailToRemove)
-    }));
   };
 
   const handleSubmit = async (e) => {
@@ -168,13 +119,6 @@ export default function EditCompanyPage() {
       return;
     }
 
-    // NUEVO: Validación de emails
-    if (formData.admin_emails.length === 0) {
-      setMessage({ type: 'error', text: 'Agrega al menos un email de administrador' });
-      setSaving(false);
-      return;
-    }
-
     try {
       // Try to save in Supabase
       if (supabase) {
@@ -184,7 +128,6 @@ export default function EditCompanyPage() {
             name: formData.name,
             currencies: formData.currencies,
             languages: formData.languages,
-            admin_emails: formData.admin_emails, // NUEVO: Guardar emails
             is_active: formData.is_active,
             updated_at: new Date().toISOString()
           })
@@ -470,63 +413,6 @@ export default function EditCompanyPage() {
       fontSize: '14px',
       fontWeight: '500',
       transition: 'all 0.2s'
-    },
-    // NUEVO: Estilos para sección de emails
-    emailInputGroup: {
-      display: 'flex',
-      gap: '12px',
-      marginBottom: '12px'
-    },
-    emailInput: {
-      flex: 1,
-      padding: '12px 16px',
-      border: '2px solid #e5e7eb',
-      borderRadius: '8px',
-      fontSize: '16px',
-      color: '#1a1a1a',
-      outline: 'none',
-      transition: 'border-color 0.2s'
-    },
-    addEmailButton: {
-      padding: '12px 24px',
-      background: '#10b981',
-      color: 'white',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'background 0.2s',
-      whiteSpace: 'nowrap'
-    },
-    emailList: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px'
-    },
-    emailItem: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '12px 16px',
-      background: '#f9fafb',
-      border: '1px solid #e5e7eb',
-      borderRadius: '8px'
-    },
-    emailText: {
-      fontSize: '14px',
-      color: '#374151'
-    },
-    removeEmailButton: {
-      padding: '6px 12px',
-      background: '#ef4444',
-      color: 'white',
-      border: 'none',
-      borderRadius: '6px',
-      fontSize: '12px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'background 0.2s'
     }
   };
 
@@ -648,58 +534,6 @@ export default function EditCompanyPage() {
               </label>
             ))}
           </div>
-        </div>
-
-        {/* NUEVO: Sección de Emails de Administrador */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Emails de Administrador*</label>
-          <p style={styles.helpText}>
-            Estos emails recibirán el reporte final del proceso de cobranza
-          </p>
-          
-          <div style={styles.emailInputGroup}>
-            <input
-              type="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addEmail();
-                }
-              }}
-              style={styles.emailInput}
-              placeholder="correo@ejemplo.com"
-            />
-            <button
-              type="button"
-              onClick={addEmail}
-              style={styles.addEmailButton}
-              onMouseOver={(e) => e.target.style.background = '#059669'}
-              onMouseOut={(e) => e.target.style.background = '#10b981'}
-            >
-              Agregar Email
-            </button>
-          </div>
-
-          {formData.admin_emails.length > 0 && (
-            <div style={styles.emailList}>
-              {formData.admin_emails.map((email, index) => (
-                <div key={index} style={styles.emailItem}>
-                  <span style={styles.emailText}>{email}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeEmail(email)}
-                    style={styles.removeEmailButton}
-                    onMouseOver={(e) => e.target.style.background = '#dc2626'}
-                    onMouseOut={(e) => e.target.style.background = '#ef4444'}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         <div style={styles.formGroup}>
