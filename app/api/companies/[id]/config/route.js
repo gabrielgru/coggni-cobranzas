@@ -129,9 +129,6 @@ export async function OPTIONS(request) {
 function getDefaultMessagingConfig(companyId) {
   const configs = {
     'dental-link': {
-      tone: 'friendly',
-      use_emojis_whatsapp: true,
-      use_emojis_email: false,
       payment_link_whatsapp: true,
       payment_link_email: true,
       show_days_overdue: true,
@@ -146,9 +143,6 @@ function getDefaultMessagingConfig(companyId) {
       }
     },
     'la-perla': {
-      tone: 'formal',
-      use_emojis_whatsapp: false,
-      use_emojis_email: false,
       payment_link_whatsapp: false,
       payment_link_email: true,
       show_days_overdue: true,
@@ -163,9 +157,6 @@ function getDefaultMessagingConfig(companyId) {
       }
     },
     'test-company': {
-      tone: 'casual',
-      use_emojis_whatsapp: true,
-      use_emojis_email: true,
       payment_link_whatsapp: true,
       payment_link_email: true,
       show_days_overdue: false,
