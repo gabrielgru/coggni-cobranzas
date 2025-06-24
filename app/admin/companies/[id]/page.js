@@ -140,10 +140,17 @@ export default function EditCompanyPage() {
     }));
   };
 
-  const handleSubmit = async (e) => {
+	const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setMessage({ type: '', text: '' });
+
+    // AGREGAR ESTOS LOGS
+    console.log('=== INICIO HANDLESUBMIT ===');
+    console.log('formData completo:', formData);
+    console.log('admin_emails tipo:', typeof formData.admin_emails);
+    console.log('admin_emails valor:', formData.admin_emails);
+    console.log('Es array?:', Array.isArray(formData.admin_emails));
 
     // Validations
     if (!formData.name) {
@@ -181,18 +188,23 @@ export default function EditCompanyPage() {
 		  admin_emails: formData.admin_emails
 		});
 
-		const { data: updateData, error: updateError } = await supabase
-		  .from('companies')
-		  .update({
-			name: formData.name,
-			currencies: formData.currencies,
-			languages: formData.languages,
-			is_active: formData.is_active,
-			admin_emails: formData.admin_emails,
-			updated_at: new Date().toISOString()
-		  })
-		  .eq('id', originalId)
-		  .select(); // Agregar .select() para ver qué devuelve
+	// Forzar el array a un formato específico
+    const updatePayload = {
+      name: formData.name,
+      currencies: formData.currencies,
+      languages: formData.languages,
+      is_active: formData.is_active,
+      admin_emails: formData.admin_emails.filter(email => email && email.trim()),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log('Payload a enviar:', updatePayload);
+    
+    const { data: updateData, error: updateError } = await supabase
+      .from('companies')
+      .update(updatePayload)
+      .eq('id', originalId)
+      .select();
 
 		console.log('Resultado update:', updateData);
 		console.log('Error update:', updateError);
