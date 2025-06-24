@@ -185,7 +185,7 @@ export default function EditCompanyPage() {
 		  currencies: formData.currencies,
 		  languages: formData.languages,
 		  is_active: formData.is_active,
-		  admin_emails: formData.admin_emails
+		  admin_emails: formData.admin_emails.length > 0 ? formData.admin_emails : null,
 		});
 
 	// Forzar el array a un formato específico
