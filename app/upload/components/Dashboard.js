@@ -122,6 +122,12 @@ export default function Dashboard() {
   const processFile = async () => {
     if (!canProcess()) return;
 
+    // DEBUG: Verificar URL del webhook
+    console.log('=== VERIFICACIÓN PRE-ENVÍO ===');
+    console.log('Empresa actual:', empresaActual);
+    console.log('Webhook URL:', empresaActual.webhook_url);
+    console.log('¿URL existe?:', !!empresaActual.webhook_url);
+
     setProcessing(true);
     setCurrentProgressStep('validating');
     setStatusMessage({
@@ -228,11 +234,47 @@ export default function Dashboard() {
         formData.append('hasUpdatedContacts', 'false');
       }
 
-      // En producción, aquí haríamos el fetch real
-       const response = await fetch(empresaActual.webhook_url, {
-         method: 'POST',
-         body: formData
-       });
+      // Envío real a webhook
+      try {
+        console.log('=== INTENTANDO ENVIAR A WEBHOOK ===');
+        console.log('URL del webhook:', empresaActual.webhook_url);
+        console.log('FormData entries:');
+        for (let [key, value] of formData.entries()) {
+          console.log(`${key}:`, value);
+        }
+
+        const response = await fetch(empresaActual.webhook_url, {
+          method: 'POST',
+          body: formData
+        });
+
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Error response:', errorText);
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        const responseData = await response.text();
+        console.log('Response data:', responseData);
+      } catch (fetchError) {
+        console.error('Error al enviar al webhook:', fetchError);
+        // No lanzamos el error para que el proceso continúe
+        // pero lo registramos
+        if (supabase && logId) {
+          await supabase
+            .from('processing_logs')
+            .update({
+              error_details: JSON.stringify({ 
+                webhook_error: fetchError.message,
+                webhook_url: empresaActual.webhook_url 
+              })
+            })
+            .eq('id', logId);
+        }
+      }
 
       setCurrentProgressStep('completed');
       
