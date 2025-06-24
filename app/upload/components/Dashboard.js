@@ -8,6 +8,7 @@ import LanguageSelector from './LanguageSelector';
 import FileUploadZone from './FileUploadZone';
 import OptionalSection from './OptionalSection';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
 
 export default function Dashboard() {
   const { usuarioActual, empresaActual, idioma, logout, changeIdioma } = useAuth();
@@ -131,7 +132,53 @@ export default function Dashboard() {
       progress: true
     });
 
+    // Crear registro de log al iniciar
+    let logId = null;
+    const startTime = new Date();
+
     try {
+      // Insertar log inicial en Supabase
+      if (supabase) {
+        try {
+          const { data: logData, error: logError } = await supabase
+            .from('processing_logs')
+            .insert({
+              webhook_call_id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generar ID único
+              status: 'processing',
+              user_email: usuarioActual,
+              company_id: empresaActual.id,
+              company_name: empresaActual.nombre,
+              invoice_file_name: selectedFile.name,
+              invoice_records_total: fileValidationResult.totalRows || 0,
+              invoice_records_valid: fileValidationResult.validRows || (fileValidationResult.totalRows - (fileValidationResult.errors?.length || 0)),
+              invoice_records_invalid: fileValidationResult.errors?.length || 0,
+              contacts_file_name: selectedContactsFile?.name || null,
+              contacts_records_total: contactsValidationResult?.totalRows || null,
+              contacts_records_valid: contactsValidationResult ? (contactsValidationResult.validRows || (contactsValidationResult.totalRows - (contactsValidationResult.errors?.length || 0))) : null,
+              contacts_records_invalid: contactsValidationResult?.errors?.length || null,
+              strategy: strategy,
+              days_anticipation: includeUpcoming ? daysInput : 0,
+              processing_status: 'processing',
+              user_agent: navigator.userAgent,
+              started_at: startTime.toISOString(),
+              files_uploaded: {
+                invoices: selectedFile.name,
+                contacts: selectedContactsFile?.name || null
+              }
+            })
+            .select()
+            .single();
+
+          if (!logError && logData) {
+            logId = logData.id;
+          } else {
+            console.error('Error al crear log:', logError);
+          }
+        } catch (err) {
+          console.error('Error al insertar log:', err);
+        }
+      }
+
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       setCurrentProgressStep('sending');
@@ -189,11 +236,29 @@ export default function Dashboard() {
 
       setCurrentProgressStep('completed');
       
-      // Guardar resumen del procesamiento exitoso
+      // Actualizar log como completado
+      if (supabase && logId) {
+        try {
+          await supabase
+            .from('processing_logs')
+            .update({
+              status: 'success',
+              processing_status: 'success',
+              completed_at: new Date().toISOString(),
+              messages_to_send: fileValidationResult.validRows || (fileValidationResult.totalRows - (fileValidationResult.errors?.length || 0)),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', logId);
+        } catch (err) {
+          console.error('Error al actualizar log:', err);
+        }
+      }
+      
+      // Guardar resumen del procesamiento exitoso con estructura mejorada
       const resumenProcesamiento = {
         archivo: selectedFile.name,
         registros: fileValidationResult.totalRows || 0,
-        registrosValidos: fileValidationResult.validRows || 0,
+        registrosValidos: fileValidationResult.validRows || (fileValidationResult.totalRows - (fileValidationResult.errors?.length || 0)),
         advertencias: fileValidationResult.warnings || 0,
         estrategia: getStrategyName(strategy),
         empresa: empresaActual.nombre,
@@ -201,7 +266,20 @@ export default function Dashboard() {
         diasAnticipacion: includeUpcoming ? daysInput : 0,
         archivoContactos: selectedContactsFile?.name || null,
         contactosActualizados: updateContacts,
-        idioma: idioma
+        idioma: idioma,
+        // Nueva estructura detallada
+        facturas: {
+          fileName: selectedFile.name,
+          totalRecords: fileValidationResult.totalRows || 0,
+          validRecords: fileValidationResult.validRows || (fileValidationResult.totalRows - (fileValidationResult.errors?.length || 0)),
+          invalidRecords: fileValidationResult.errors?.length || 0
+        },
+        contactos: selectedContactsFile ? {
+          fileName: selectedContactsFile.name,
+          totalRecords: contactsValidationResult?.totalRows || 0,
+          validRecords: contactsValidationResult ? (contactsValidationResult.validRows || (contactsValidationResult.totalRows - (contactsValidationResult.errors?.length || 0))) : 0,
+          invalidRecords: contactsValidationResult?.errors?.length || 0
+        } : null
       };
       
       // Guardar en localStorage
@@ -222,6 +300,24 @@ export default function Dashboard() {
       }, 1500);
       
     } catch (error) {
+      // Actualizar log con error
+      if (supabase && logId) {
+        try {
+          await supabase
+            .from('processing_logs')
+            .update({
+              status: 'error',
+              processing_status: 'error',
+              completed_at: new Date().toISOString(),
+              error_details: JSON.stringify({ message: error.message, stack: error.stack }),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', logId);
+        } catch (err) {
+          console.error('Error al actualizar log con error:', err);
+        }
+      }
+
       // En caso de error, mantener en la misma página
       setStatusMessage({
         show: true,

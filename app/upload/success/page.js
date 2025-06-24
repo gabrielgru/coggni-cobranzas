@@ -52,21 +52,19 @@ export default function SuccessPage() {
     es: {
       titulo: '¡Procesamiento Exitoso!',
       subtitulo: 'Tu proceso de cobranza se ha iniciado correctamente',
-      resumenTitulo: 'Resumen del Procesamiento',
+      resumenTitulo: '📊 Resumen del Procesamiento',
       empresa: 'Empresa',
-      archivo: 'Archivo procesado',
-      registros: 'Total de registros',
+      archivoFacturas: '📄 Archivo de Facturas',
+      archivoContactos: '📋 Archivo de Contactos',
+      archivo: 'Archivo',
+      totalRegistros: 'Total de registros',
       registrosValidos: 'Registros válidos',
-      advertencias: 'Advertencias',
-      estrategia: 'Estrategia de envío',
-      fechaProcesamiento: 'Fecha de procesamiento',
-      diasAnticipacion: 'Días de anticipación',
-      contactosActualizados: 'Base de contactos',
-      archivoContactos: 'Archivo de contactos',
-      si: 'Sí',
-      no: 'No',
-      actualizada: 'Actualizada',
-      noActualizada: 'No actualizada',
+      registrosConErrores: 'Registros con errores',
+      configuracion: '⚙️ Configuración',
+      estrategia: 'Estrategia',
+      diasAnticipacion: 'Días anticipación',
+      fechaProcesamiento: 'Fecha procesamiento',
+      noAplica: 'No aplica',
       proximosPasos: 'Próximos Pasos',
       paso1: 'Los mensajes se están enviando según la estrategia seleccionada',
       paso2: 'Recibirás un reporte por email cuando el proceso termine',
@@ -77,21 +75,19 @@ export default function SuccessPage() {
     en: {
       titulo: 'Processing Successful!',
       subtitulo: 'Your collection process has started successfully',
-      resumenTitulo: 'Processing Summary',
+      resumenTitulo: '📊 Processing Summary',
       empresa: 'Company',
-      archivo: 'Processed file',
-      registros: 'Total records',
+      archivoFacturas: '📄 Invoice File',
+      archivoContactos: '📋 Contacts File',
+      archivo: 'File',
+      totalRegistros: 'Total records',
       registrosValidos: 'Valid records',
-      advertencias: 'Warnings',
-      estrategia: 'Sending strategy',
-      fechaProcesamiento: 'Processing date',
+      registrosConErrores: 'Records with errors',
+      configuracion: '⚙️ Configuration',
+      estrategia: 'Strategy',
       diasAnticipacion: 'Days in advance',
-      contactosActualizados: 'Contacts database',
-      archivoContactos: 'Contacts file',
-      si: 'Yes',
-      no: 'No',
-      actualizada: 'Updated',
-      noActualizada: 'Not updated',
+      fechaProcesamiento: 'Processing date',
+      noAplica: 'Not applicable',
       proximosPasos: 'Next Steps',
       paso1: 'Messages are being sent according to the selected strategy',
       paso2: 'You will receive an email report when the process is complete',
@@ -155,109 +151,112 @@ export default function SuccessPage() {
 
         {/* Resumen del Procesamiento */}
         <div className="section" style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 style={{ marginBottom: '20px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}>
-              <path d="M9 11l3 3L22 4M17 11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9a2 2 0 012-2h11"/>
-            </svg>
+          <h2 style={{ marginBottom: '20px', fontSize: '24px', fontWeight: '600' }}>
             {t.resumenTitulo}
           </h2>
 
+          {/* Empresa */}
           <div style={{
             background: 'var(--bg-secondary)',
             borderRadius: '12px',
-            padding: '24px',
+            padding: '20px',
+            marginBottom: '20px',
             border: '1px solid var(--border-color)'
           }}>
-            <div className="summary-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '20px'
+            <div style={{ fontSize: '16px' }}>
+              <strong>{t.empresa}:</strong> {procesamiento.empresa}
+            </div>
+          </div>
+
+          {/* Archivo de Facturas */}
+          <div style={{
+            background: 'var(--bg-secondary)',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '20px',
+            border: '1px solid var(--border-color)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '18px', fontWeight: '600' }}>
+              {t.archivoFacturas}
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div>
+                <span style={{ color: 'var(--text-secondary)' }}>• {t.archivo}:</span> {procesamiento.facturas?.fileName || procesamiento.archivo}
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-secondary)' }}>• {t.totalRegistros}:</span> {procesamiento.facturas?.totalRecords || procesamiento.registros}
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-secondary)' }}>• {t.registrosValidos}:</span>{' '}
+                <span style={{ color: '#10b981', fontWeight: '600' }}>
+                  {procesamiento.facturas?.validRecords || procesamiento.registrosValidos}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-secondary)' }}>• {t.registrosConErrores}:</span>{' '}
+                <span style={{ color: procesamiento.facturas?.invalidRecords > 0 ? '#ef4444' : 'inherit' }}>
+                  {procesamiento.facturas?.invalidRecords || 0}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Archivo de Contactos (si aplica) */}
+          {procesamiento.contactos && (
+            <div style={{
+              background: 'var(--bg-secondary)',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px',
+              border: '1px solid var(--border-color)'
             }}>
-              <div className="summary-item">
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  {t.empresa}
+              <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '18px', fontWeight: '600' }}>
+                {t.archivoContactos}
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>• {t.archivo}:</span> {procesamiento.contactos.fileName}
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                  {procesamiento.empresa}
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>• {t.totalRegistros}:</span> {procesamiento.contactos.totalRecords}
                 </div>
-              </div>
-
-              <div className="summary-item">
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  {t.archivo}
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>• {t.registrosValidos}:</span>{' '}
+                  <span style={{ color: '#10b981', fontWeight: '600' }}>
+                    {procesamiento.contactos.validRecords}
+                  </span>
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                  {procesamiento.archivo}
-                </div>
-              </div>
-
-              <div className="summary-item">
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  {t.registros}
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                  {procesamiento.registros}
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>• {t.registrosConErrores}:</span>{' '}
+                  <span style={{ color: procesamiento.contactos.invalidRecords > 0 ? '#ef4444' : 'inherit' }}>
+                    {procesamiento.contactos.invalidRecords}
+                  </span>
                 </div>
               </div>
+            </div>
+          )}
 
-              <div className="summary-item">
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  {t.registrosValidos}
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#10b981' }}>
-                  {procesamiento.registrosValidos}
-                </div>
+          {/* Configuración */}
+          <div style={{
+            background: 'var(--bg-secondary)',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '20px',
+            border: '1px solid var(--border-color)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '18px', fontWeight: '600' }}>
+              {t.configuracion}
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div>
+                <span style={{ color: 'var(--text-secondary)' }}>• {t.estrategia}:</span> {procesamiento.estrategia}
               </div>
-
-              {procesamiento.advertencias > 0 && (
-                <div className="summary-item">
-                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                    {t.advertencias}
-                  </div>
-                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#f59e0b' }}>
-                    {procesamiento.advertencias}
-                  </div>
-                </div>
-              )}
-
-              <div className="summary-item">
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  {t.estrategia}
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                  {procesamiento.estrategia}
-                </div>
+              <div>
+                <span style={{ color: 'var(--text-secondary)' }}>• {t.diasAnticipacion}:</span>{' '}
+                {procesamiento.diasAnticipacion > 0 ? `${procesamiento.diasAnticipacion} días` : t.noAplica}
               </div>
-
-              {procesamiento.diasAnticipacion > 0 && (
-                <div className="summary-item">
-                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                    {t.diasAnticipacion}
-                  </div>
-                  <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                    {procesamiento.diasAnticipacion} días
-                  </div>
-                </div>
-              )}
-
-              {procesamiento.contactosActualizados && (
-                <div className="summary-item">
-                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                    {t.archivoContactos}
-                  </div>
-                  <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                    {procesamiento.archivoContactos}
-                  </div>
-                </div>
-              )}
-
-              <div className="summary-item">
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  {t.fechaProcesamiento}
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                  {formatearFecha(procesamiento.timestamp)}
-                </div>
+              <div>
+                <span style={{ color: 'var(--text-secondary)' }}>• {t.fechaProcesamiento}:</span> {formatearFecha(procesamiento.timestamp)}
               </div>
             </div>
           </div>
