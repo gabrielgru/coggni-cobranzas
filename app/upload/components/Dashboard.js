@@ -170,8 +170,8 @@ export default function Dashboard() {
 	  formData.append('empresa_nombre', empresaActual.nombre);
 	  formData.append('empresa_monedas', JSON.stringify(empresaActual.monedas));
 	  formData.append('empresa_paises_telefono', JSON.stringify(empresaActual.paises_telefono));
-	  // Agregar emails de administrador
-	  formData.append('empresa_admin_emails', JSON.stringify(empresaActual.admin_emails || []));
+	  // Agregar email de administrador (singular)
+	  formData.append('empresa_admin_email', empresaActual.admin_email || '');
 	  
       
       if (selectedContactsFile) {
