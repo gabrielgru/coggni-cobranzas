@@ -43,6 +43,8 @@ export function AuthProvider({ children }) {
       monedas: companyData.currencies || ['$'],
       paises_telefono: ['UY', 'AR', 'ES'], // Por ahora hardcoded
       webhook_url: `https://gabrielgru.app.n8n.cloud/webhook/cobranza-${companyData.id}`,
+	  // AGREGAR ESTA LÍNEA para los mails de administrdor
+	  admin_emails: companyData.admin_emails || [], 
       
       // Mapear field mappings a la estructura esperada
       campos_facturas: {

@@ -16,10 +16,13 @@ export default function EditCompanyPage() {
     name: '',
     currencies: [],
     languages: [],
-    is_active: true
+    is_active: true,
+    admin_emails: []
   });
   const [originalId] = useState(companyId); // Store original ID
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [newEmail, setNewEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // Available options
   const currencyOptions = ['$', 'U$S', 'EUR', 'R$', 'CLP', 'ARS'];
@@ -44,7 +47,10 @@ export default function EditCompanyPage() {
           .single();
 
         if (!error && data) {
-          setFormData(data);
+          setFormData({
+            ...data,
+            admin_emails: data.admin_emails || []
+          });
         } else {
           // Fallback data
           loadFallbackData();
@@ -69,21 +75,24 @@ export default function EditCompanyPage() {
         name: 'Dental Link',
         currencies: ['$', 'U$S'],
         languages: ['es'],
-        is_active: true
+        is_active: true,
+        admin_emails: ['admin@dentallink.com']
       },
       'la-perla': {
         id: 'la-perla',
         name: 'La Perla',
         currencies: ['EUR'],
         languages: ['es'],
-        is_active: true
+        is_active: true,
+        admin_emails: ['admin@laperla.com']
       },
       'test-company': {
         id: 'test-company',
         name: 'Test Company',
         currencies: ['U$S'],
         languages: ['en', 'es'],
-        is_active: true
+        is_active: true,
+        admin_emails: ['admin@testcompany.com', 'reports@testcompany.com']
       }
     };
 
@@ -93,6 +102,42 @@ export default function EditCompanyPage() {
     } else {
       setMessage({ type: 'error', text: 'Empresa no encontrada' });
     }
+  };
+
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  const addEmail = () => {
+    if (!newEmail.trim()) {
+      setEmailError('El email no puede estar vacío');
+      return;
+    }
+
+    if (!validateEmail(newEmail)) {
+      setEmailError('Por favor ingresa un email válido');
+      return;
+    }
+
+    if (formData.admin_emails.includes(newEmail)) {
+      setEmailError('Este email ya está en la lista');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      admin_emails: [...prev.admin_emails, newEmail]
+    }));
+    setNewEmail('');
+    setEmailError('');
+  };
+
+  const removeEmail = (emailToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      admin_emails: prev.admin_emails.filter(email => email !== emailToRemove)
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -119,6 +164,12 @@ export default function EditCompanyPage() {
       return;
     }
 
+    if (formData.admin_emails.length === 0) {
+      setMessage({ type: 'error', text: 'Agrega al menos un email de administrador' });
+      setSaving(false);
+      return;
+    }
+
     try {
       // Try to save in Supabase
       if (supabase) {
@@ -129,6 +180,7 @@ export default function EditCompanyPage() {
             currencies: formData.currencies,
             languages: formData.languages,
             is_active: formData.is_active,
+            admin_emails: formData.admin_emails,
             updated_at: new Date().toISOString()
           })
           .eq('id', originalId);
@@ -413,6 +465,56 @@ export default function EditCompanyPage() {
       fontSize: '14px',
       fontWeight: '500',
       transition: 'all 0.2s'
+    },
+    emailInputGroup: {
+      display: 'flex',
+      gap: '8px',
+      marginBottom: '12px'
+    },
+    addEmailButton: {
+      padding: '12px 24px',
+      background: '#10b981',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      transition: 'background 0.2s',
+      whiteSpace: 'nowrap'
+    },
+    emailList: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px'
+    },
+    emailItem: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '12px 16px',
+      background: '#f9fafb',
+      border: '1px solid #e5e7eb',
+      borderRadius: '8px'
+    },
+    emailText: {
+      fontSize: '14px',
+      color: '#374151'
+    },
+    removeEmailButton: {
+      padding: '4px 12px',
+      background: '#ef4444',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      fontSize: '12px',
+      cursor: 'pointer',
+      transition: 'background 0.2s'
+    },
+    errorText: {
+      color: '#ef4444',
+      fontSize: '14px',
+      marginTop: '4px'
     }
   };
 
@@ -488,6 +590,64 @@ export default function EditCompanyPage() {
             placeholder="ej: Mi Empresa S.A."
             required
           />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Emails de Administradores*</label>
+          <p style={styles.helpText}>
+            Estos emails recibirán los reportes de procesamiento
+          </p>
+          
+          <div style={styles.emailInputGroup}>
+            <input
+              type="email"
+              value={newEmail}
+              onChange={(e) => {
+                setNewEmail(e.target.value);
+                setEmailError('');
+              }}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addEmail();
+                }
+              }}
+              style={{ ...styles.input, marginBottom: 0 }}
+              placeholder="admin@empresa.com"
+            />
+            <button
+              type="button"
+              onClick={addEmail}
+              style={styles.addEmailButton}
+            >
+              Agregar Email
+            </button>
+          </div>
+          
+          {emailError && (
+            <p style={styles.errorText}>{emailError}</p>
+          )}
+
+          <div style={styles.emailList}>
+            {formData.admin_emails.length === 0 ? (
+              <p style={{ ...styles.helpText, fontStyle: 'italic' }}>
+                No hay emails configurados aún
+              </p>
+            ) : (
+              formData.admin_emails.map((email, index) => (
+                <div key={index} style={styles.emailItem}>
+                  <span style={styles.emailText}>{email}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeEmail(email)}
+                    style={styles.removeEmailButton}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         <div style={styles.formGroup}>
