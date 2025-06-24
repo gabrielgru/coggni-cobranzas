@@ -62,10 +62,11 @@ export default function AdminLayout({ children }) {
       
       if (!session) {
         console.log('No session found, redirecting to login');
+        // NO cambiar initializing a false antes del redirect
+        await router.push('/admin/login');
         setIsAuthenticated(false);
         setLoading(false);
         setInitializing(false);
-        router.push('/admin/login');
         return;
       }
 
@@ -78,10 +79,11 @@ export default function AdminLayout({ children }) {
 
       if (adminError || !adminUser) {
         console.log('User is not admin');
+        // NO cambiar initializing a false antes del redirect
+        await router.push('/admin/login?error=unauthorized');
         setIsAuthenticated(false);
         setLoading(false);
         setInitializing(false);
-        router.push('/admin/login?error=unauthorized');
         return;
       }
 
@@ -96,10 +98,11 @@ export default function AdminLayout({ children }) {
 
     } catch (error) {
       console.error('Auth check error:', error);
+      // NO cambiar initializing a false antes del redirect
+      await router.push('/admin/login');
       setIsAuthenticated(false);
       setLoading(false);
       setInitializing(false);
-      router.push('/admin/login');
     }
   };
 
