@@ -536,6 +536,606 @@ h2 {
   transform: translateY(-1px);
 }
 
+
+/* ========================================
+   ESTILOS FALTANTES UPLOAD - PARTE 1
+   Agregar después de .download-report-btn:hover
+   ======================================== */
+
+/* Strategy Selection Cards */
+.strategy-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.strategy-card {
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  background: var(--bg-primary);
+}
+
+.strategy-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(60, 164, 212, 0.15);
+  transform: translateY(-2px);
+}
+
+.strategy-card.selected {
+  border-color: var(--primary-color);
+  background-color: var(--bg-secondary);
+  box-shadow: 0 4px 12px rgba(60, 164, 212, 0.15);
+}
+
+[data-theme="dark"] .strategy-card.selected {
+  background-color: rgba(94, 184, 232, 0.1);
+}
+
+.strategy-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+}
+
+.strategy-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.strategy-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--gray-100);
+  color: var(--gray-600);
+  flex-shrink: 0;
+}
+
+.strategy-card.selected .strategy-icon {
+  background-color: var(--primary-color);
+  color: var(--white);
+}
+
+.strategy-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.strategy-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.checkmark {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  animation: checkmarkPop 0.3s ease-out;
+}
+
+@keyframes checkmarkPop {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.strategy-card.selected .checkmark {
+  display: flex;
+}
+
+/* Optional Section */
+.optional-section {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  margin-top: 32px;
+}
+
+.optional-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  gap: 16px;
+}
+
+.optional-header > div:first-child {
+  flex: 1;
+  max-width: calc(100% - 64px);
+}
+
+.optional-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex-wrap: wrap;
+}
+
+.optional-badge {
+  background-color: var(--gray-200);
+  color: var(--gray-600);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .optional-badge {
+  background-color: var(--gray-300);
+  color: var(--gray-700);
+}
+
+.optional-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--gray-300);
+  transition: var(--transition);
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: var(--white);
+  transition: var(--transition);
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--primary-color);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.optional-content {
+  margin-top: 20px;
+  display: none;
+  animation: slideDown 0.3s ease-out;
+}
+
+.optional-note {
+  background-color: #fef3c7;
+  border-left: 4px solid var(--warning);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--gray-700);
+  margin-bottom: 16px;
+}
+
+[data-theme="dark"] .optional-note {
+  background-color: rgba(251, 191, 36, 0.1);
+  color: var(--text-secondary);
+}
+
+
+
+
+/* ========================================
+   ESTILOS FALTANTES UPLOAD - PARTE 2
+   Agregar después de la Parte 1
+   ======================================== */
+
+/* Days Input Section */
+.days-input-section {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.days-input-intro {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.days-input-label {
+  display: block;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.days-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.number-input-container {
+  position: relative;
+  width: 100px;
+}
+
+.number-input {
+  width: 100%;
+  padding: 10px 40px 10px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  transition: var(--transition);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.number-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(60, 164, 212, 0.1);
+}
+
+.number-controls {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.number-control {
+  width: 28px;
+  height: 18px;
+  border: none;
+  background-color: var(--gray-100);
+  color: var(--gray-600);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.number-control:hover {
+  background-color: var(--gray-200);
+}
+
+.number-control:active {
+  background-color: var(--gray-300);
+}
+
+.days-input-help {
+  font-size: 14px;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.days-example {
+  background-color: #e8f5e9;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--gray-700);
+  line-height: 1.5;
+  transition: var(--transition);
+}
+
+[data-theme="dark"] .days-example {
+  background-color: rgba(74, 222, 128, 0.1);
+  color: var(--text-secondary);
+}
+
+.days-notes {
+  margin-top: 16px;
+  padding-left: 20px;
+  border-left: 3px solid var(--gray-300);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.days-notes-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.days-detail-toggle {
+  color: var(--gray-600);
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: var(--transition);
+  user-select: none;
+  margin-top: 12px;
+}
+
+.days-detail-toggle:hover {
+  color: var(--primary-color);
+}
+
+.days-detail-toggle-arrow {
+  transition: transform 0.2s ease;
+  font-size: 10px;
+}
+
+.days-detail-toggle.expanded .days-detail-toggle-arrow {
+  transform: rotate(180deg);
+}
+
+.days-detail-content {
+  display: none;
+  margin-top: 12px;
+  animation: slideDown 0.2s ease-out;
+}
+
+.days-detail-content.visible {
+  display: block;
+}
+
+/* Column tags/chips */
+.columns-info {
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+  animation: fadeIn 0.3s ease-out;
+  border: 1px solid var(--border-color);
+}
+
+.columns-toggle {
+  color: var(--gray-600);
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.columns-toggle:hover {
+  color: var(--primary-color);
+}
+
+.columns-toggle-arrow {
+  transition: transform 0.2s ease;
+  font-size: 10px;
+}
+
+.columns-toggle.expanded .columns-toggle-arrow {
+  transform: rotate(180deg);
+}
+
+.columns-content {
+  display: none;
+  margin-top: 12px;
+  animation: slideDown 0.2s ease-out;
+}
+
+.columns-content.visible {
+  display: block;
+}
+
+.columns-info strong {
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.columns-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.column-tag {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+
+
+/* ========================================
+   ESTILOS FALTANTES UPLOAD - PARTE 3
+   Agregar después de la Parte 2
+   ======================================== */
+
+/* Process Summary */
+.process-summary {
+  display: none;
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  padding: 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  animation: slideDown 0.3s ease-out;
+  border: 1px solid var(--border-color);
+}
+
+.process-summary h3 {
+  font-size: 16px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.summary-content {
+  margin-top: 12px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+}
+
+.summary-item strong {
+  color: var(--text-primary);
+}
+
+/* Status Progress */
+.status-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.status-content {
+  white-space: pre-line;
+}
+
+.status-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+.progress-step.active {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.progress-step.completed {
+  color: var(--success);
+}
+
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--gray-300);
+  transition: var(--transition);
+}
+
+.progress-step.active .progress-dot {
+  background-color: var(--primary-color);
+  animation: pulse 1.5s infinite;
+}
+
+.progress-step.completed .progress-dot {
+  background-color: var(--success);
+}
+
+/* Spinner for processing */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--gray-300);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* Responsive adjustments for upload styles */
+@media (max-width: 768px) {
+  .strategy-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .days-input-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .columns-tags {
+    justify-content: center;
+  }
+  
+  .optional-header {
+    gap: 12px;
+  }
+  
+  .optional-header > div:first-child {
+    max-width: calc(100% - 60px);
+  }
+  
+  .optional-title {
+    font-size: 15px;
+    gap: 8px;
+  }
+  
+  .optional-badge {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+}
+
+
+
+
+
 /* Process Button */
 .process-section {
   margin-top: 32px;
