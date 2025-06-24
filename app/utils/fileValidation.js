@@ -45,7 +45,7 @@ export async function readExcelFile(file) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
         resolve(jsonData);
       } catch (error) {
         reject(error);
@@ -140,16 +140,31 @@ export async function validateFacturasFile(file, empresaConfig) {
       }
     });
     
-    // Validar datos fila por fila
+    // CAMBIO IMPORTANTE: Primero contar las filas con contenido real
+    let actualDataRows = 0;
+    let lastDataRowIndex = 0;
+    
+    // Buscar hasta dónde hay datos reales
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const hasContent = row && row.length > 0 && row.some(cell => 
+        cell !== '' && cell !== null && cell !== undefined && String(cell).trim() !== ''
+      );
+      
+      if (hasContent) {
+        actualDataRows++;
+        lastDataRowIndex = i;
+      }
+    }
+    
+    // Validar datos fila por fila (solo hasta donde hay datos reales)
     let rowsWithoutVencim = 0;
     let invalidCurrencies = 0;
     let invalidSaldos = 0;
-    let emptyRows = 0;
     
-    for (let i = 1; i < Math.min(data.length, 100); i++) {
+    for (let i = 1; i <= lastDataRowIndex; i++) {
       const row = data[i];
-      if (!row || row.length === 0 || row.every(cell => !cell)) {
-        emptyRows++;
+      if (!row || row.length === 0 || row.every(cell => !cell || String(cell).trim() === '')) {
         continue;
       }
       
@@ -196,15 +211,18 @@ export async function validateFacturasFile(file, empresaConfig) {
       errors.push(`${invalidSaldos} facturas tienen saldo inválido`);
     }
     
-    if (emptyRows > 5) {
-      warnings.push(`El archivo contiene ${emptyRows} filas vacías`);
+    // Advertir sobre filas vacías al final
+    const emptyRowsAtEnd = data.length - 1 - lastDataRowIndex;
+    if (emptyRowsAtEnd > 10) {
+      warnings.push(`El archivo contiene ${emptyRowsAtEnd} filas vacías al final que fueron ignoradas`);
     }
     
     return {
       valid: errors.length === 0,
       errors,
       warnings,
-      totalRows: data.length - 1 - emptyRows,
+      totalRows: actualDataRows,
+      validRows: actualDataRows - invalidCurrencies - invalidSaldos,
       columns: headers
     };
     
@@ -270,15 +288,30 @@ export async function validateContactsFile(file, empresaConfig) {
       }
     }
     
-    // Validar emails
-    let invalidEmails = 0;
-    const invalidEmailExamples = [];
-    let emptyRows = 0;
+    // CAMBIO IMPORTANTE: Primero contar las filas con contenido real
+    let actualDataRows = 0;
+    let lastDataRowIndex = 0;
     
+    // Buscar hasta dónde hay datos reales
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      if (!row || row.length === 0 || row.every(cell => !cell)) {
-        emptyRows++;
+      const hasContent = row && row.length > 0 && row.some(cell => 
+        cell !== '' && cell !== null && cell !== undefined && String(cell).trim() !== ''
+      );
+      
+      if (hasContent) {
+        actualDataRows++;
+        lastDataRowIndex = i;
+      }
+    }
+    
+    // Validar emails solo en filas con contenido
+    let invalidEmails = 0;
+    const invalidEmailExamples = [];
+    
+    for (let i = 1; i <= lastDataRowIndex; i++) {
+      const row = data[i];
+      if (!row || row.length === 0 || row.every(cell => !cell || String(cell).trim() === '')) {
         continue;
       }
       
@@ -303,15 +336,18 @@ export async function validateContactsFile(file, empresaConfig) {
       }
     }
     
-    if (emptyRows > 5) {
-      warnings.push(`El archivo contiene ${emptyRows} filas vacías`);
+    // Advertir sobre filas vacías al final
+    const emptyRowsAtEnd = data.length - 1 - lastDataRowIndex;
+    if (emptyRowsAtEnd > 10) {
+      warnings.push(`El archivo contiene ${emptyRowsAtEnd} filas vacías al final que fueron ignoradas`);
     }
     
     return {
       valid: errors.length === 0,
       errors,
       warnings,
-      totalRows: data.length - 1 - emptyRows,
+      totalRows: actualDataRows,
+      validRows: actualDataRows - invalidEmails,
       columns: headers
     };
     
