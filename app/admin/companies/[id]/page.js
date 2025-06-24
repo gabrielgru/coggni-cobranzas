@@ -170,20 +170,32 @@ export default function EditCompanyPage() {
       return;
     }
 
-    try {
-      // Try to save in Supabase
-      if (supabase) {
-        const { error: updateError } = await supabase
-          .from('companies')
-          .update({
-            name: formData.name,
-            currencies: formData.currencies,
-            languages: formData.languages,
-            is_active: formData.is_active,
-            admin_emails: formData.admin_emails,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', originalId);
+	try {
+	  // Try to save in Supabase
+	  if (supabase) {
+		console.log('Datos a guardar:', {
+		  name: formData.name,
+		  currencies: formData.currencies,
+		  languages: formData.languages,
+		  is_active: formData.is_active,
+		  admin_emails: formData.admin_emails
+		});
+
+		const { data: updateData, error: updateError } = await supabase
+		  .from('companies')
+		  .update({
+			name: formData.name,
+			currencies: formData.currencies,
+			languages: formData.languages,
+			is_active: formData.is_active,
+			admin_emails: formData.admin_emails,
+			updated_at: new Date().toISOString()
+		  })
+		  .eq('id', originalId)
+		  .select(); // Agregar .select() para ver qué devuelve
+
+		console.log('Resultado update:', updateData);
+		console.log('Error update:', updateError);
 
         if (updateError) {
           console.error('Error updating:', updateError);
