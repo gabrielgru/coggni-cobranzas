@@ -144,10 +144,18 @@ export default function Dashboard() {
       // Insertar log inicial en Supabase
       if (supabase) {
         try {
+          console.log('🔵 Intentando guardar en processing_logs:', webhookCallId);
+          console.log('Datos a guardar:', {
+            webhook_call_id: webhookCallId,
+            company_id: empresaActual.id,
+            user_email: usuarioActual,
+            status: 'processing'
+          });
+          
           const { data: logData, error: logError } = await supabase
             .from('processing_logs')
             .insert({
-              webhook_call_id: webhookCallId, // Usar la variable, no generar nuevo
+              webhook_call_id: webhookCallId,
               status: 'processing',
               user_email: usuarioActual,
               company_id: empresaActual.id,
@@ -173,14 +181,46 @@ export default function Dashboard() {
             .select()
             .single();
 
-          if (!logError && logData) {
-            logId = logData.id;
-          } else {
-            console.error('Error al crear log:', logError);
+          if (logError) {
+            console.error('❌ ERROR guardando log en processing_logs:', logError);
+            console.error('Detalles del error:', JSON.stringify(logError, null, 2));
+            
+            // NO continuar si falla - esto es crítico
+            setStatusMessage({
+              show: true,
+              type: 'error',
+              title: 'Error al iniciar procesamiento',
+              content: 'No se pudo crear el registro de procesamiento. Por favor, intenta nuevamente.',
+              progress: false
+            });
+            setProcessing(false);
+            return; // IMPORTANTE: Salir de la función si falla
           }
+          
+          if (logData) {
+            logId = logData.id;
+            console.log('✅ Log guardado exitosamente en processing_logs:');
+            console.log('- ID del registro:', logId);
+            console.log('- webhook_call_id:', logData.webhook_call_id);
+            console.log('- Datos completos:', logData);
+          } else {
+            console.warn('⚠️ Insert exitoso pero sin datos retornados');
+          }
+          
         } catch (err) {
-          console.error('Error al insertar log:', err);
+          console.error('❌ Error al insertar log:', err);
+          setStatusMessage({
+            show: true,
+            type: 'error',
+            title: 'Error al iniciar procesamiento',
+            content: 'Error de base de datos. Por favor, intenta nuevamente.',
+            progress: false
+          });
+          setProcessing(false);
+          return;
         }
+      } else {
+        console.warn('⚠️ Supabase no está disponible - continuando sin logging');
       }
 
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -207,18 +247,20 @@ export default function Dashboard() {
       formData.append('dias_anticipacion_vencimiento', includeUpcoming ? daysInput : 0);
       formData.append('timestamp', new Date().toISOString());
 	  
-	  // TEMPORAL - Para debugging
+      // TEMPORAL - Para debugging
       console.log('=== ENVIANDO A WEBHOOK ===');
       console.log('Webhook Call ID en FormData:', webhookCallId);
       console.log('Empresa ID:', empresaActual.id);
       console.log('Empresa Nombre:', empresaActual.nombre);
+      console.log('Webhook URL base:', empresaActual.webhook_url);
+      console.log('URL completa con query param:', `${empresaActual.webhook_url}?webhook_call_id=${webhookCallId}`);
 	  
-	  // Agregar información de la empresa
-	  formData.append('empresa_id', empresaActual.id);
-	  formData.append('empresa_nombre', empresaActual.nombre);
-	  formData.append('empresa_monedas', JSON.stringify(empresaActual.monedas));
-	  formData.append('empresa_paises_telefono', JSON.stringify(empresaActual.paises_telefono));
-	  formData.append('empresa_admin_email', empresaActual.admin_email || '');
+      // Agregar información de la empresa
+      formData.append('empresa_id', empresaActual.id);
+      formData.append('empresa_nombre', empresaActual.nombre);
+      formData.append('empresa_monedas', JSON.stringify(empresaActual.monedas));
+      formData.append('empresa_paises_telefono', JSON.stringify(empresaActual.paises_telefono));
+      formData.append('empresa_admin_email', empresaActual.admin_email || '');
 	  
       if (selectedContactsFile) {
         formData.append('contactsFile', selectedContactsFile);
@@ -228,9 +270,19 @@ export default function Dashboard() {
       }
 
       // Envío real a webhook
-      const response = await fetch(`${empresaActual.webhook_url}?webhook_call_id=${webhookCallId}`, {
+      console.log('🚀 Enviando FormData al webhook...');
+      const webhookUrl = `${empresaActual.webhook_url}?webhook_call_id=${webhookCallId}`;
+      console.log('URL final:', webhookUrl);
+      
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         body: formData
+      });
+
+      console.log('📡 Respuesta del webhook:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText
       });
 
       if (!response.ok) {
@@ -667,5 +719,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-
