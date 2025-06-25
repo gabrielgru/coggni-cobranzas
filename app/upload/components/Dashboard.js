@@ -122,12 +122,6 @@ export default function Dashboard() {
   const processFile = async () => {
     if (!canProcess()) return;
 
-    // DEBUG: Verificar URL del webhook
-    console.log('=== VERIFICACIÓN PRE-ENVÍO ===');
-    console.log('Empresa actual:', empresaActual);
-    console.log('Webhook URL:', empresaActual.webhook_url);
-    console.log('¿URL existe?:', !!empresaActual.webhook_url);
-
     setProcessing(true);
     setCurrentProgressStep('validating');
     setStatusMessage({
@@ -138,6 +132,10 @@ export default function Dashboard() {
       progress: true
     });
 
+    // Generar webhook_call_id una sola vez AL INICIO
+    const webhookCallId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('Webhook Call ID generado:', webhookCallId);
+    
     // Crear registro de log al iniciar
     let logId = null;
     const startTime = new Date();
@@ -149,7 +147,7 @@ export default function Dashboard() {
           const { data: logData, error: logError } = await supabase
             .from('processing_logs')
             .insert({
-              webhook_call_id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generar ID único
+              webhook_call_id: webhookCallId, // Usar la variable, no generar nuevo
               status: 'processing',
               user_email: usuarioActual,
               company_id: empresaActual.id,
@@ -198,35 +196,30 @@ export default function Dashboard() {
       
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Simular envío a webhook
+      // Preparar FormData para webhook
       const formData = new FormData();
+      
+      // IMPORTANTE: Agregar webhook_call_id al FormData
+      formData.append('webhook_call_id', webhookCallId);
+      
       formData.append('file', selectedFile);
       formData.append('estrategia_envio', strategy);
       formData.append('dias_anticipacion_vencimiento', includeUpcoming ? daysInput : 0);
       formData.append('timestamp', new Date().toISOString());
 	  
-	  
 	  // TEMPORAL - Para debugging
       console.log('=== ENVIANDO A WEBHOOK ===');
-      console.log('Empresa actual completa:', empresaActual);
+      console.log('Webhook Call ID en FormData:', webhookCallId);
       console.log('Empresa ID:', empresaActual.id);
       console.log('Empresa Nombre:', empresaActual.nombre);
-      console.log('Empresa Monedas:', empresaActual.monedas);
 	  
-	  
-	  
-	  
-	  
-	  
-	  // NUEVO: Agregar información de la empresa
+	  // Agregar información de la empresa
 	  formData.append('empresa_id', empresaActual.id);
 	  formData.append('empresa_nombre', empresaActual.nombre);
 	  formData.append('empresa_monedas', JSON.stringify(empresaActual.monedas));
 	  formData.append('empresa_paises_telefono', JSON.stringify(empresaActual.paises_telefono));
-	  // Agregar email de administrador (singular)
 	  formData.append('empresa_admin_email', empresaActual.admin_email || '');
 	  
-      
       if (selectedContactsFile) {
         formData.append('contactsFile', selectedContactsFile);
         formData.append('hasUpdatedContacts', 'true');
@@ -235,45 +228,13 @@ export default function Dashboard() {
       }
 
       // Envío real a webhook
-      try {
-        console.log('=== INTENTANDO ENVIAR A WEBHOOK ===');
-        console.log('URL del webhook:', empresaActual.webhook_url);
-        console.log('FormData entries:');
-        for (let [key, value] of formData.entries()) {
-          console.log(`${key}:`, value);
-        }
+      const response = await fetch(empresaActual.webhook_url, {
+        method: 'POST',
+        body: formData
+      });
 
-        const response = await fetch(empresaActual.webhook_url, {
-          method: 'POST',
-          body: formData
-        });
-
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Error response:', errorText);
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
-
-        const responseData = await response.text();
-        console.log('Response data:', responseData);
-      } catch (fetchError) {
-        console.error('Error al enviar al webhook:', fetchError);
-        // No lanzamos el error para que el proceso continúe
-        // pero lo registramos
-        if (supabase && logId) {
-          await supabase
-            .from('processing_logs')
-            .update({
-              error_details: JSON.stringify({ 
-                webhook_error: fetchError.message,
-                webhook_url: empresaActual.webhook_url 
-              })
-            })
-            .eq('id', logId);
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       setCurrentProgressStep('completed');
