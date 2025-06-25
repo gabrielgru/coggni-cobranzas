@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../lib/supabase';
+import { supabaseAdmin } from '../../../lib/supabase';
 
 export async function POST(request) {
   try {
@@ -33,14 +33,14 @@ export async function POST(request) {
     }
 
     // NUEVO: Verificar conexión a Supabase
-    if (!supabase) {
-      console.error('❌ Supabase client not initialized');
+    if (!supabaseAdmin) {
+      console.error('❌ Supabase admin client not initialized');
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
     // Verificar que el webhook_call_id existe en processing_logs
     console.log('🔍 Checking processing_logs for webhook_call_id:', body.webhook_call_id);
-    const { data: processingLog, error: checkError } = await supabase
+    const { data: processingLog, error: checkError } = await supabaseAdmin
       .from('processing_logs')
       .select('id')
       .eq('webhook_call_id', body.webhook_call_id)
@@ -55,7 +55,7 @@ export async function POST(request) {
 
     // Verificar si ya existen logs para este webhook_call_id (duplicado)
     console.log('🔍 Checking for duplicate messages...');
-    const { count } = await supabase
+    const { count } = await supabaseAdmin
       .from('message_logs')
       .select('*', { count: 'exact', head: true })
       .eq('webhook_call_id', body.webhook_call_id);
@@ -85,7 +85,7 @@ export async function POST(request) {
     console.log('Sample message log:', messageLogs[0]);
 
     // Insertar logs de mensajes
-    const { error: insertError, data: insertedData } = await supabase
+    const { error: insertError, data: insertedData } = await supabaseAdmin
       .from('message_logs')
       .insert(messageLogs)
       .select();
@@ -100,7 +100,7 @@ export async function POST(request) {
 
     // Actualizar processing_logs con completed_at
     console.log('📝 Updating processing log status...');
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('processing_logs')
       .update({
         completed_at: body.completed_at || new Date().toISOString(),
