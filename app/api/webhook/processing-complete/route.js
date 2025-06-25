@@ -76,6 +76,8 @@ export async function POST(request) {
       destination: msg.destination,
       status: msg.status,
       error_message: msg.error_message,
+      strategy_used: body.strategy_used || null,
+      message_type: msg.message_type || 'recordatorio_vencidas',
       sent_at: new Date().toISOString()
     }));
 
