@@ -228,7 +228,7 @@ export default function Dashboard() {
       }
 
       // Envío real a webhook
-      const response = await fetch(empresaActual.webhook_url, {
+      const response = await fetch(`${empresaActual.webhook_url}?webhook_call_id=${webhookCallId}`, {
         method: 'POST',
         body: formData
       });
@@ -667,3 +667,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
