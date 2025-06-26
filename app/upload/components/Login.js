@@ -41,7 +41,7 @@ export default function Login() {
             width={80}
             height={80}
           />
-          <h1>Coggni Cobranzas - Iniciar Sesión</h1>
+          <h1 className="login-title-modern">Coggni Cobranzas</h1>
         </div>
 
         <form onSubmit={handleSubmit}>

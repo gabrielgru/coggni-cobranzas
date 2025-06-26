@@ -210,6 +210,24 @@ input[type=number] {
 }
 
 
+/* Nuevo estilo moderno tipo Notion */
+.login-title-modern {
+  color: #000000 !important;
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+/* Asegurar que sea negro en modo oscuro también */
+[data-theme="dark"] .login-title-modern {
+  color: #000000 !important;
+}
+
+
+
 
 .login-form h1 {
   color: var(--secondary-color);
