@@ -70,11 +70,7 @@ export default function Login() {
           </div>
         )}
 
-        <div className="demo-credentials">
-          <p><strong>Demo - Dental Link:</strong> dental@dentallink.com / demo123</p>
-          <p><strong>Demo - La Perla:</strong> admin@laperla.es / demo123</p>
-          <p><strong>Demo - Test Company:</strong> test@testcompany.com / demo123</p>
-        </div>
+        
       </div>
     </div>
   );
