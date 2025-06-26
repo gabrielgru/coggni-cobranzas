@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { TEXTOS } from '../../utils/constants';
+import Image from 'next/image';
 import logoCoggni from './Logo-Coggni.png';
 
 export default function Login() {
@@ -33,7 +34,7 @@ export default function Login() {
     <div className="login-container">
       <div className="login-form">
         <div className="logo-section">
-          <img 
+          <Image 
             src={logoCoggni} 
             alt="Coggni Logo" 
             className="logo-image"
