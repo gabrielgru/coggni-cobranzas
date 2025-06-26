@@ -90,7 +90,7 @@ export const EMPRESAS_CONFIG = {
 export const TEXTOS = {
   es: {
     login: {
-      titulo: 'Coggni - Iniciar Sesión',
+      titulo: 'Coggni Cobranzas - Iniciar Sesión',
       usuario: 'Correo Electrónico',
       password: 'Contraseña',
       ingresar: 'Ingresar',
@@ -154,7 +154,7 @@ export const TEXTOS = {
   },
   en: {
     login: {
-      titulo: 'Coggni - Sign In',
+      titulo: 'Coggni Collections - Sign In',
       usuario: 'Email Address',
       password: 'Password',
       ingresar: 'Sign In',

@@ -201,6 +201,16 @@ input[type=number] {
   margin-bottom: 16px;
 }
 
+/* AGREGAR AQUÍ EL NUEVO ESTILO */
+.logo-image {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  margin-bottom: 16px;
+}
+
+
+
 .login-form h1 {
   color: var(--secondary-color);
   font-size: 28px;

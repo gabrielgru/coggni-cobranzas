@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { TEXTOS } from '../../utils/constants';
+import logoCoggni from './Logo-Coggni.png';
 
 export default function Login() {
   const [usuario, setUsuario] = useState('');
@@ -32,8 +33,14 @@ export default function Login() {
     <div className="login-container">
       <div className="login-form">
         <div className="logo-section">
-          <div className="logo">🏢</div>
-          <h1>{textos.titulo}</h1>
+          <img 
+            src={logoCoggni} 
+            alt="Coggni Logo" 
+            className="logo-image"
+            width={80}
+            height={80}
+          />
+          <h1>Coggni Cobranzas - Iniciar Sesión</h1>
         </div>
 
         <form onSubmit={handleSubmit}>
