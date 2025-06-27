@@ -351,7 +351,7 @@ export default function Dashboard() {
       
       // Redirigir después de un breve delay
       setTimeout(() => {
-        router.push('/upload/success');
+        router.push('/collections/success');
       }, 1500);
       
     } catch (error) {
