@@ -3,12 +3,12 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { TEXTOS } from '../../utils/constants';
-import ThemeToggle from './ThemeToggle';
-import LanguageSelector from './LanguageSelector';
+import ThemeToggle from '../../components/shared/ThemeToggle';
+import LanguageSelector from '../../components/shared/LanguageSelector';
 import FileUploadZone from './FileUploadZone';
 import OptionalSection from './OptionalSection';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../lib/supabase';
 
 export default function Dashboard() {
   const { usuarioActual, empresaActual, idioma, logout, changeIdioma } = useAuth();
@@ -142,7 +142,7 @@ export default function Dashboard() {
 
     try {
       // Insertar log inicial en Supabase
-      if (supabase) {
+      if (supabaseAdmin) {
         try {
           console.log('🔵 Intentando guardar en processing_logs:', webhookCallId);
           console.log('Datos a guardar:', {
@@ -152,7 +152,7 @@ export default function Dashboard() {
             status: 'processing'
           });
           
-          const { data: logData, error: logError } = await supabase
+          const { data: logData, error: logError } = await supabaseAdmin
             .from('processing_logs')
             .insert({
               webhook_call_id: webhookCallId,
@@ -292,9 +292,9 @@ export default function Dashboard() {
       setCurrentProgressStep('completed');
       
       // Actualizar log como completado
-      if (supabase && logId) {
+      if (supabaseAdmin && logId) {
         try {
-          await supabase
+          await supabaseAdmin
             .from('processing_logs')
             .update({
               status: 'success',
@@ -340,6 +340,14 @@ export default function Dashboard() {
       // Guardar en localStorage
       localStorage.setItem('ultimoProcesamiento', JSON.stringify(resumenProcesamiento));
       
+      // DEBUG: Verificar que se guardó
+      console.log('🔵 [Dashboard] Guardando en localStorage:', resumenProcesamiento);
+      const verificar = localStorage.getItem('ultimoProcesamiento');
+      console.log('🔵 [Dashboard] Verificación inmediata:', verificar ? 'SÍ existe' : 'NO existe');
+      console.log('🔵 [Dashboard] Redirigiendo en 1.5 segundos...');
+
+
+
       // Mostrar mensaje de éxito brevemente antes de redirigir
       setStatusMessage({
         show: true,
@@ -356,9 +364,9 @@ export default function Dashboard() {
       
     } catch (error) {
       // Actualizar log con error
-      if (supabase && logId) {
+      if (supabaseAdmin && logId) {
         try {
-          await supabase
+          await supabaseAdmin
             .from('processing_logs')
             .update({
               status: 'error',

@@ -3,8 +3,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { TEXTOS } from '../../utils/constants';
-import Image from 'next/image';
-import logoCoggni from './Logo-Coggni.png';
 
 export default function Login() {
   const [usuario, setUsuario] = useState('');
@@ -12,21 +10,21 @@ export default function Login() {
   const [error, setError] = useState('');
   const { login, idioma } = useAuth();
 
-  const handleSubmit = (e) => {
-    e?.preventDefault();
-    
-    if (!usuario || !password) {
-      setError('Por favor complete todos los campos');
-      return;
-    }
+ const handleSubmit = async (e) => {
+  e?.preventDefault();
+  
+  if (!usuario || !password) {
+    setError('Por favor complete todos los campos');
+    return;
+  }
 
-    const result = login(usuario, password);
-    if (!result.success) {
-      setError(result.error);
-    } else {
-      setError('');
-    }
-  };
+  const result = await login(usuario, password);
+  if (!result || !result.success) {
+    setError(result?.error || 'Usuario o contraseña incorrectos');
+  } else {
+    setError('');
+  }
+ };
 
   const textos = TEXTOS[idioma].login;
 
@@ -34,12 +32,12 @@ export default function Login() {
     <div className="login-container">
       <div className="login-form">
         <div className="logo-section">
-          <Image 
-            src={logoCoggni} 
+          <img 
+            src="/Logo-Coggni.png" 
             alt="Coggni Logo" 
             className="logo-image"
-            width={80}
-            height={80}
+            width="80"
+            height="80"
           />
           <h1 className="login-title-modern">Coggni Cobranzas</h1>
         </div>

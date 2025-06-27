@@ -5,11 +5,17 @@ import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext(null);
 
+// Constantes de configuración
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos en milisegundos
+const ACTIVITY_CHECK_INTERVAL = 60 * 1000; // Verificar cada minuto
+
 export function AuthProvider({ children }) {
   const [usuarioActual, setUsuarioActual] = useState(null);
   const [empresaActual, setEmpresaActual] = useState(null);
   const [idioma, setIdioma] = useState('es');
   const [loading, setLoading] = useState(true);
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [userType, setUserType] = useState(null); // 'client' | 'admin' | null
 
   // Función helper para formatear datos de empresa
   const formatCompanyData = async (companyData) => {
@@ -77,17 +83,98 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Función helper para manejar cookies
+  const setCookie = (name, value, days = 30) => {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+  };
+
+  const deleteCookie = (name) => {
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict`;
+  };
+
+  // Actualizar última actividad
+  const updateActivity = () => {
+    const now = Date.now();
+    setLastActivity(now);
+    // Actualizar tanto en localStorage como en cookies
+    if (userType === 'client') {
+      localStorage.setItem('coggni-last-activity', now.toString());
+      setCookie('coggni-last-activity', now.toString());
+    }
+  };
+
+  // Verificar timeout de sesión
+  const checkSessionTimeout = () => {
+    if (userType !== 'client' || !usuarioActual) return;
+
+    const now = Date.now();
+    const timeSinceLastActivity = now - lastActivity;
+
+    if (timeSinceLastActivity > SESSION_TIMEOUT) {
+      console.log('Session timed out due to inactivity');
+      logout();
+      // Redirigir a login si no estamos ya ahí
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+  };
+
   // Cargar usuario de localStorage al iniciar
   useEffect(() => {
     checkExistingSession();
   }, []);
 
+  // Configurar verificación periódica de timeout
+  useEffect(() => {
+    if (userType === 'client' && usuarioActual) {
+      const interval = setInterval(checkSessionTimeout, ACTIVITY_CHECK_INTERVAL);
+      return () => clearInterval(interval);
+    }
+  }, [userType, usuarioActual, lastActivity]);
+
+  // Agregar listeners para actividad del usuario
+  useEffect(() => {
+    if (userType === 'client' && usuarioActual) {
+      const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+      
+      const handleActivity = () => {
+        updateActivity();
+      };
+
+      events.forEach(event => {
+        document.addEventListener(event, handleActivity, { passive: true });
+      });
+
+      return () => {
+        events.forEach(event => {
+          document.removeEventListener(event, handleActivity);
+        });
+      };
+    }
+  }, [userType, usuarioActual]);
+
   const checkExistingSession = async () => {
     try {
       const savedUser = localStorage.getItem('coggni-user');
       const savedCompanyId = localStorage.getItem('coggni-company-id');
+      const savedUserType = localStorage.getItem('coggni-user-type');
+      const savedLastActivity = localStorage.getItem('coggni-last-activity');
       
       if (savedUser && savedCompanyId) {
+        // Verificar si es cliente y si la sesión expiró
+        if (savedUserType === 'client' && savedLastActivity) {
+          const timeSinceLastActivity = Date.now() - parseInt(savedLastActivity);
+          if (timeSinceLastActivity > SESSION_TIMEOUT) {
+            console.log('Previous session expired');
+            logout();
+            setLoading(false);
+            return;
+          }
+        }
+
         // Verificar que el usuario existe en Supabase
         if (supabase) {
           try {
@@ -111,6 +198,8 @@ export function AuthProvider({ children }) {
                 setUsuarioActual(savedUser);
                 setEmpresaActual(formattedCompany);
                 setIdioma(companyData.languages?.[0] || 'es');
+                setUserType(savedUserType || 'client');
+                setLastActivity(savedLastActivity ? parseInt(savedLastActivity) : Date.now());
               }
             }
           } catch (supabaseError) {
@@ -121,6 +210,8 @@ export function AuthProvider({ children }) {
               setUsuarioActual(savedUser);
               setEmpresaActual(fallbackData);
               setIdioma(fallbackData.idioma_default);
+              setUserType(savedUserType || 'client');
+              setLastActivity(Date.now());
             }
           }
         } else {
@@ -130,6 +221,8 @@ export function AuthProvider({ children }) {
             setUsuarioActual(savedUser);
             setEmpresaActual(fallbackData);
             setIdioma(fallbackData.idioma_default);
+            setUserType(savedUserType || 'client');
+            setLastActivity(Date.now());
           }
         }
       }
@@ -181,10 +274,20 @@ export function AuthProvider({ children }) {
           setUsuarioActual(email);
           setEmpresaActual(formattedCompany);
           setIdioma(companyData.languages?.[0] || 'es');
+          setUserType('client');
+          setLastActivity(Date.now());
           
-          // Guardar en localStorage
+          // Guardar en localStorage Y cookies
           localStorage.setItem('coggni-user', email);
           localStorage.setItem('coggni-company-id', userData.company_id);
+          localStorage.setItem('coggni-user-type', 'client');
+          localStorage.setItem('coggni-last-activity', Date.now().toString());
+          
+          // También guardar en cookies para el middleware
+          setCookie('coggni-user', email);
+          setCookie('coggni-company-id', userData.company_id);
+          setCookie('coggni-user-type', 'client');
+          setCookie('coggni-last-activity', Date.now().toString());
           
           return { success: true };
           
@@ -223,9 +326,19 @@ export function AuthProvider({ children }) {
         setUsuarioActual(email);
         setEmpresaActual(empresa);
         setIdioma(empresa.idioma_default);
+        setUserType('client');
+        setLastActivity(Date.now());
         
         localStorage.setItem('coggni-user', email);
         localStorage.setItem('coggni-company-id', cred.empresa);
+        localStorage.setItem('coggni-user-type', 'client');
+        localStorage.setItem('coggni-last-activity', Date.now().toString());
+        
+        // También guardar en cookies
+        setCookie('coggni-user', email);
+        setCookie('coggni-company-id', cred.empresa);
+        setCookie('coggni-user-type', 'client');
+        setCookie('coggni-last-activity', Date.now().toString());
         
         return { success: true };
       }
@@ -237,8 +350,20 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setUsuarioActual(null);
     setEmpresaActual(null);
+    setUserType(null);
+    setLastActivity(Date.now());
+    
+    // Limpiar localStorage
     localStorage.removeItem('coggni-user');
     localStorage.removeItem('coggni-company-id');
+    localStorage.removeItem('coggni-user-type');
+    localStorage.removeItem('coggni-last-activity');
+    
+    // Limpiar cookies
+    deleteCookie('coggni-user');
+    deleteCookie('coggni-company-id');
+    deleteCookie('coggni-user-type');
+    deleteCookie('coggni-last-activity');
   };
 
   const changeIdioma = (nuevoIdioma) => {
@@ -252,9 +377,12 @@ export function AuthProvider({ children }) {
     empresaActual,
     idioma,
     loading,
+    userType,
+    lastActivity,
     login,
     logout,
-    changeIdioma
+    changeIdioma,
+    updateActivity
   };
 
   return (

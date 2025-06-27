@@ -9,16 +9,12 @@ const ThemeContext = createContext({
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState('light');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Leer tema de cookie o usar preferencia del sistema
-    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
-      return acc;
-    }, {});
-
-    const savedTheme = cookies['coggni-theme'];
+    setMounted(true);
+    // Leer tema de localStorage
+    const savedTheme = localStorage.getItem('coggni-theme');
     
     if (savedTheme) {
       setTheme(savedTheme);
@@ -30,20 +26,21 @@ export function ThemeProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // Aplicar clase al documento
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(theme);
-    
-    // Guardar en cookie
-    document.cookie = `coggni-theme=${theme}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Strict`;
-  }, [theme]);
+    if (mounted) {
+      // Aplicar atributo data-theme al HTML
+      document.documentElement.setAttribute('data-theme', theme);
+      
+      // Guardar en localStorage
+      localStorage.setItem('coggni-theme', theme);
+    }
+  }, [theme, mounted]);
 
   const toggleTheme = () => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, mounted }}>
       {children}
     </ThemeContext.Provider>
   );

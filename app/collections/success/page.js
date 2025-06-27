@@ -3,23 +3,37 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
-import ThemeToggle from '../components/ThemeToggle';
-import LanguageSelector from '../components/LanguageSelector';
+import ThemeToggle from '../../components/shared/ThemeToggle';
+import LanguageSelector from '../../components/shared/LanguageSelector';
 
 export default function SuccessPage() {
   const router = useRouter();
   const { empresaActual, idioma } = useAuth();
   const [procesamiento, setProcesamiento] = useState(null);
   
+  // DEBUG: Ver ciclo de vida
+  console.log('🟢 [Success] Componente montado');
+  
   useEffect(() => {
+    // DEBUG: Verificar localStorage
+    console.log('🟢 [Success] useEffect ejecutándose');
+    console.log('🟢 [Success] Buscando en localStorage...');
+    
     // Obtener datos del procesamiento desde localStorage
     const datosGuardados = localStorage.getItem('ultimoProcesamiento');
+    console.log('🟢 [Success] Datos encontrados:', datosGuardados ? 'SÍ' : 'NO');
+    console.log('🟢 [Success] Contenido:', datosGuardados?.substring(0, 100) + '...');
+    
     if (datosGuardados) {
+      console.log('🟢 [Success] Parseando datos...');
       setProcesamiento(JSON.parse(datosGuardados));
-      // Limpiar localStorage después de leer
-      localStorage.removeItem('ultimoProcesamiento');
+      
+      // DEBUG: NO borrar inmediatamente
+      console.log('🟢 [Success] COMENTANDO removeItem temporalmente');
+      // localStorage.removeItem('ultimoProcesamiento');
     } else {
       // Si no hay datos, redirigir a collections
+      console.log('🔴 [Success] NO HAY DATOS - Redirigiendo a /collections');
       router.push('/collections');
     }
   }, [router]);

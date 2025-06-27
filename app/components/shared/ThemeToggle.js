@@ -4,18 +4,7 @@ import React from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function ThemeToggle() {
-  const { theme, toggleTheme, mounted } = useTheme();
-
-  // Evitar flash de contenido incorrecto
-  if (!mounted) {
-    return (
-      <div className="theme-toggle" style={{ opacity: 0 }}>
-        <div className="theme-toggle-slider">
-          <div className="theme-icon" />
-        </div>
-      </div>
-    );
-  }
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div 
@@ -30,7 +19,6 @@ export default function ThemeToggle() {
           toggleTheme();
         }
       }}
-      style={{ position: 'relative' }}
     >
       <div className={`theme-toggle-slider ${theme === 'dark' ? 'dark' : ''}`}>
         <svg 
