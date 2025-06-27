@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos
 const PUBLIC_ROUTES = ['/login', '/api', '/_next', '/static', '/favicon.ico'];
 const ADMIN_ROUTES = ['/admin'];
-const AUTH_ROUTES = ['/collections', '/dashboard', '/settings'];
+const AUTH_ROUTES = ['/auth', '/collections', '/settings'];
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
