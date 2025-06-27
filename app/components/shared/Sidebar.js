@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
-import LanguageSelector from '../../collections/components/LanguageSelector';
+import LanguageSelector from './LanguageSelector';
 
 export default function Sidebar({ modules, activeModule, user, isOpen, onToggle }) {
   const router = useRouter();
