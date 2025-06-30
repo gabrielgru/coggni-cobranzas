@@ -8,7 +8,7 @@ export const EMPRESAS_CONFIG = {
     idiomas_disponibles: ['es'],
     monedas: ['$', 'U$S'],
     paises_telefono: ['UY', 'AR', 'ES'],
-    webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook-test/cobranza-multiempresa',
+    webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
     admin_email: 'admin@dentallink.com',
     campos_facturas: {
       codigo: { nombre: 'Código', requerido: true },
@@ -36,7 +36,7 @@ export const EMPRESAS_CONFIG = {
     idiomas_disponibles: ['es'],
     monedas: ['EUR'],
     paises_telefono: ['ES', 'FR', 'IT'],
-    webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook-test/cobranza-multiempresa',
+    webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
     admin_email: 'admin@laperla.com',
     campos_facturas: {
       codigo: { nombre: 'Código Cliente', requerido: true },
@@ -64,7 +64,7 @@ export const EMPRESAS_CONFIG = {
     idiomas_disponibles: ['en', 'es'],
     monedas: ['U$S'],
     paises_telefono: ['US', 'CA', 'MX'],
-    webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook-test/cobranza-multiempresa',
+    webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
     admin_email: 'admin@testcompany.com',
     campos_facturas: {
       codigo: { nombre: 'Customer Code', requerido: true },
