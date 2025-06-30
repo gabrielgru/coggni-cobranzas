@@ -19,8 +19,11 @@ export function AuthProvider({ children }) {
 
   // Función helper para formatear datos de empresa
   const formatCompanyData = async (companyData) => {
-    // Obtener field mappings de la empresa
-    let fieldMappings = {};
+    // Obtener field mappings de la empresa con la estructura correcta
+    let fieldMappings = {
+      invoice: {},
+      contact: {}
+    };
     
     if (supabase) {
       try {
@@ -30,8 +33,19 @@ export function AuthProvider({ children }) {
           .eq('company_id', companyData.id);
         
         if (mappings) {
+          // Organizar mappings por file_type
           mappings.forEach(mapping => {
-            fieldMappings[mapping.field_type] = mapping.source_column;
+            if (mapping.file_type === 'invoice') {
+              fieldMappings.invoice[mapping.internal_field_name] = {
+                column: mapping.company_field_name,
+                required: mapping.is_required
+              };
+            } else if (mapping.file_type === 'contact') {
+              fieldMappings.contact[mapping.internal_field_name] = {
+                column: mapping.company_field_name,
+                required: mapping.is_required
+              };
+            }
           });
         }
       } catch (error) {
@@ -51,23 +65,62 @@ export function AuthProvider({ children }) {
       webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook-test/cobranza-multiempresa',
       admin_email: companyData.admin_email || '',
       
-      // Mapear field mappings a la estructura esperada
+      // Mapear field mappings a la estructura esperada usando la estructura correcta de la BD
       campos_facturas: {
-        codigo: { nombre: fieldMappings['invoice_codigo'] || 'Código', requerido: true },
-        nombre: { nombre: fieldMappings['invoice_nombre'] || 'Nombre', requerido: true },
-        saldo: { nombre: fieldMappings['invoice_saldo'] || 'Saldo', requerido: true },
-        docum: { nombre: fieldMappings['invoice_docum'] || 'Docum', requerido: true },
-        mon: { nombre: fieldMappings['invoice_mon'] || 'Mon', requerido: companyData.currencies?.length > 1 },
-        vencim: { nombre: fieldMappings['invoice_vencim'] || 'Vencim', requerido: false },
-        referencia: { nombre: fieldMappings['invoice_referencia'] || 'Referencia', requerido: false }
+        codigo: { 
+          nombre: fieldMappings.invoice.customer_code?.column || 'Código', 
+          requerido: fieldMappings.invoice.customer_code?.required !== false 
+        },
+        nombre: { 
+          nombre: fieldMappings.invoice.customer_name?.column || 'Nombre', 
+          requerido: fieldMappings.invoice.customer_name?.required !== false 
+        },
+        saldo: { 
+          nombre: fieldMappings.invoice.amount?.column || 'Saldo', 
+          requerido: fieldMappings.invoice.amount?.required !== false 
+        },
+        docum: { 
+          nombre: fieldMappings.invoice.document_number?.column || 'Docum', 
+          requerido: fieldMappings.invoice.document_number?.required !== false 
+        },
+        mon: { 
+          nombre: fieldMappings.invoice.currency?.column || 'Mon', 
+          requerido: fieldMappings.invoice.currency?.required === true || companyData.currencies?.length > 1 
+        },
+        vencim: { 
+          nombre: fieldMappings.invoice.due_date?.column || 'Vencim', 
+          requerido: fieldMappings.invoice.due_date?.required === true 
+        },
+        referencia: { 
+          nombre: fieldMappings.invoice.reference?.column || 'Referencia', 
+          requerido: fieldMappings.invoice.reference?.required === true 
+        }
       },
       campos_contactos: {
-        codigo: { nombre: fieldMappings['contact_codigo'] || 'Código', requerido: true },
-        nombre: { nombre: fieldMappings['contact_nombre'] || 'Nombre', requerido: true },
-        email: { nombre: fieldMappings['contact_email'] || 'Email', requerido: true },
-        telefono: { nombre: fieldMappings['contact_telefono'] || 'Teléfono', requerido: true },
-        contacto1: { nombre: fieldMappings['contact_contacto1'] || 'Contacto 1', requerido: false },
-        contacto2: { nombre: fieldMappings['contact_contacto2'] || 'Contacto 2', requerido: false }
+        codigo: { 
+          nombre: fieldMappings.contact.customer_code?.column || 'Código', 
+          requerido: fieldMappings.contact.customer_code?.required !== false 
+        },
+        nombre: { 
+          nombre: fieldMappings.contact.customer_name?.column || 'Nombre', 
+          requerido: fieldMappings.contact.customer_name?.required !== false 
+        },
+        email: { 
+          nombre: fieldMappings.contact.email?.column || 'Email', 
+          requerido: fieldMappings.contact.email?.required === true // Respeta el flag de la BD
+        },
+        telefono: { 
+          nombre: fieldMappings.contact.phone?.column || 'Teléfono', 
+          requerido: fieldMappings.contact.phone?.required !== false 
+        },
+        contacto1: { 
+          nombre: fieldMappings.contact.phone_alt?.column || 'Contacto 1', 
+          requerido: fieldMappings.contact.phone_alt?.required === true 
+        },
+        contacto2: { 
+          nombre: fieldMappings.contact.whatsapp?.column || 'Contacto 2', 
+          requerido: fieldMappings.contact.whatsapp?.required === true 
+        }
       }
     };
   };

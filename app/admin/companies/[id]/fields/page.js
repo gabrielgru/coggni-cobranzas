@@ -17,26 +17,95 @@ export default function FieldMappingPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // Invoice file fields (Ficha Facturas)
+  // Invoice file fields - ahora con internal_field_name correcto
   const invoiceFields = [
-    { key: 'codigo', label: 'Código Cliente', required: true },
-    { key: 'nombre', label: 'Nombre/Razón Social', required: true },
-    { key: 'saldo', label: 'Saldo/Importe', required: true },
-    { key: 'docum', label: 'Nº Documento/Factura', required: true },
-    { key: 'mon', label: 'Moneda', required: false },
-    { key: 'vencim', label: 'Fecha Vencimiento', required: true },
-    { key: 'referencia', label: 'Referencia', required: false }
+    { 
+      key: 'customer_code', 
+      label: 'Código Cliente', 
+      required: true,
+      placeholder: 'Ej: Código, CodCliente, Nº Cliente'
+    },
+    { 
+      key: 'customer_name', 
+      label: 'Nombre/Razón Social', 
+      required: true,
+      placeholder: 'Ej: Nombre, RazonSocial, Cliente'
+    },
+    { 
+      key: 'amount', 
+      label: 'Saldo/Importe', 
+      required: true,
+      placeholder: 'Ej: Saldo, Importe, Monto'
+    },
+    { 
+      key: 'document_number', 
+      label: 'Nº Documento/Factura', 
+      required: true,
+      placeholder: 'Ej: NumDoc, NumeroDoc, Factura'
+    },
+    { 
+      key: 'currency', 
+      label: 'Moneda', 
+      required: false,
+      placeholder: 'Ej: Mon, Moneda, Currency'
+    },
+    { 
+      key: 'due_date', 
+      label: 'Fecha Vencimiento', 
+      required: true,
+      placeholder: 'Ej: FechaVto, Vencimiento, DueDate'
+    },
+    { 
+      key: 'reference', 
+      label: 'Referencia', 
+      required: false,
+      placeholder: 'Ej: Ref, Referencia, Observaciones'
+    }
   ];
 
-  // Contact file fields (Ficha Contactos)
+  // Contact file fields - ahora con internal_field_name correcto
   const contactFields = [
-    { key: 'codigo', label: 'Código Cliente', required: true },
-    { key: 'nombre', label: 'Nombre/Razón Social', required: true },
-    { key: 'email', label: 'Email', required: true },
-    { key: 'telefono', label: 'Teléfono', required: true },
-    { key: 'contacto1', label: 'Contacto 1', required: false },
-    { key: 'contacto2', label: 'Contacto 2', required: false }
+    { 
+      key: 'customer_code', 
+      label: 'Código Cliente', 
+      required: true,
+      placeholder: 'Ej: Código, Nº, CodCliente'
+    },
+    { 
+      key: 'customer_name', 
+      label: 'Nombre/Razón Social', 
+      required: true,
+      placeholder: 'Ej: Nombre, RazonSocial, Cliente'
+    },
+    { 
+      key: 'email', 
+      label: 'Email', 
+      required: false, // Ahora es opcional por defecto
+      placeholder: 'Ej: Email, Correo, Mail'
+    },
+    { 
+      key: 'phone', 
+      label: 'Teléfono', 
+      required: true,
+      placeholder: 'Ej: Teléfono, Tel, Nº teléfono'
+    },
+    { 
+      key: 'phone_alt', 
+      label: 'Teléfono Alternativo', 
+      required: false,
+      placeholder: 'Ej: Tel2, Contacto1, Celular'
+    },
+    { 
+      key: 'whatsapp', 
+      label: 'WhatsApp', 
+      required: false,
+      placeholder: 'Ej: WhatsApp, Movil, Contacto2'
+    }
   ];
+
+  // Estado para manejar campos requeridos/opcionales
+  const [invoiceRequiredFields, setInvoiceRequiredFields] = useState({});
+  const [contactRequiredFields, setContactRequiredFields] = useState({});
 
   useEffect(() => {
     loadData();
@@ -53,7 +122,7 @@ export default function FieldMappingPage() {
       };
       setCompany(companyData);
 
-      // Load existing mappings from Supabase
+      // Load existing mappings from Supabase con la estructura correcta
       if (supabase) {
         const { data: existingMappings, error } = await supabase
           .from('field_mappings')
@@ -61,47 +130,43 @@ export default function FieldMappingPage() {
           .eq('company_id', companyId);
 
         if (!error && existingMappings) {
-          // Separate mappings by type
+          // Organizar mappings por file_type
           const invoiceMap = {};
           const contactMap = {};
+          const invoiceRequired = {};
+          const contactRequired = {};
           
           existingMappings.forEach(mapping => {
-            if (mapping.field_type.startsWith('invoice_')) {
-              invoiceMap[mapping.field_type.replace('invoice_', '')] = mapping.source_column;
-            } else if (mapping.field_type.startsWith('contact_')) {
-              contactMap[mapping.field_type.replace('contact_', '')] = mapping.source_column;
+            if (mapping.file_type === 'invoice') {
+              invoiceMap[mapping.internal_field_name] = mapping.company_field_name;
+              invoiceRequired[mapping.internal_field_name] = mapping.is_required;
+            } else if (mapping.file_type === 'contact') {
+              contactMap[mapping.internal_field_name] = mapping.company_field_name;
+              contactRequired[mapping.internal_field_name] = mapping.is_required;
             }
           });
           
           setInvoiceMappings(invoiceMap);
           setContactMappings(contactMap);
+          setInvoiceRequiredFields(invoiceRequired);
+          setContactRequiredFields(contactRequired);
         }
       }
 
-      // Set default mappings if none exist
-      if (Object.keys(invoiceMappings).length === 0) {
-        const defaultInvoiceMappings = {
-          codigo: 'Código',
-          nombre: 'Nombre',
-          saldo: 'Saldo',
-          docum: 'Docum',
-          mon: 'Mon',
-          vencim: 'Vencim',
-          referencia: 'Referencia'
-        };
-        setInvoiceMappings(defaultInvoiceMappings);
-      }
+      // Solo establecer defaults si no hay mappings existentes
+      if (Object.keys(invoiceMappings).length === 0 && !existingMappings?.length) {
+        // Establecer campos requeridos por defecto
+        const defaultInvoiceRequired = {};
+        invoiceFields.forEach(field => {
+          defaultInvoiceRequired[field.key] = field.required;
+        });
+        setInvoiceRequiredFields(defaultInvoiceRequired);
 
-      if (Object.keys(contactMappings).length === 0) {
-        const defaultContactMappings = {
-          codigo: 'Código',
-          nombre: 'Nombre',
-          email: 'Email',
-          telefono: 'Teléfono',
-          contacto1: 'Contacto 1',
-          contacto2: 'Contacto 2'
-        };
-        setContactMappings(defaultContactMappings);
+        const defaultContactRequired = {};
+        contactFields.forEach(field => {
+          defaultContactRequired[field.key] = field.required;
+        });
+        setContactRequiredFields(defaultContactRequired);
       }
 
     } catch (error) {
@@ -123,27 +188,38 @@ export default function FieldMappingPage() {
           .delete()
           .eq('company_id', companyId);
 
-        // Prepare all mappings
+        // Prepare all mappings con la estructura correcta
         const allMappings = [];
+        let order = 1;
         
         // Invoice mappings
-        Object.entries(invoiceMappings).forEach(([field, column]) => {
-          if (column) {
+        invoiceFields.forEach(field => {
+          const columnName = invoiceMappings[field.key];
+          if (columnName && columnName.trim() !== '') {
             allMappings.push({
               company_id: companyId,
-              field_type: `invoice_${field}`,
-              source_column: column
+              file_type: 'invoice',
+              internal_field_name: field.key,
+              company_field_name: columnName.trim(),
+              is_required: invoiceRequiredFields[field.key] !== false,
+              data_type: getDataType(field.key),
+              field_order: order++
             });
           }
         });
 
         // Contact mappings
-        Object.entries(contactMappings).forEach(([field, column]) => {
-          if (column) {
+        contactFields.forEach(field => {
+          const columnName = contactMappings[field.key];
+          if (columnName && columnName.trim() !== '') {
             allMappings.push({
               company_id: companyId,
-              field_type: `contact_${field}`,
-              source_column: column
+              file_type: 'contact',
+              internal_field_name: field.key,
+              company_field_name: columnName.trim(),
+              is_required: contactRequiredFields[field.key] === true,
+              data_type: getDataType(field.key),
+              field_order: order++
             });
           }
         });
@@ -169,6 +245,19 @@ export default function FieldMappingPage() {
     }
   };
 
+  // Helper para determinar el tipo de dato
+  const getDataType = (fieldKey) => {
+    const dataTypes = {
+      'amount': 'number',
+      'due_date': 'date',
+      'email': 'email',
+      'phone': 'phone',
+      'phone_alt': 'phone',
+      'whatsapp': 'phone'
+    };
+    return dataTypes[fieldKey] || 'text';
+  };
+
   const handleInvoiceMappingChange = (fieldKey, value) => {
     setInvoiceMappings(prev => ({
       ...prev,
@@ -180,6 +269,20 @@ export default function FieldMappingPage() {
     setContactMappings(prev => ({
       ...prev,
       [fieldKey]: value
+    }));
+  };
+
+  const handleInvoiceRequiredChange = (fieldKey, isRequired) => {
+    setInvoiceRequiredFields(prev => ({
+      ...prev,
+      [fieldKey]: isRequired
+    }));
+  };
+
+  const handleContactRequiredChange = (fieldKey, isRequired) => {
+    setContactRequiredFields(prev => ({
+      ...prev,
+      [fieldKey]: isRequired
     }));
   };
 
@@ -253,7 +356,7 @@ export default function FieldMappingPage() {
     },
     fieldRow: {
       display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
+      gridTemplateColumns: '300px 1fr 120px',
       gap: '16px',
       alignItems: 'center',
       padding: '14px 16px',
@@ -271,13 +374,16 @@ export default function FieldMappingPage() {
       fontWeight: '500',
       color: '#374151'
     },
-    requiredBadge: {
-      fontSize: '11px',
-      padding: '2px 6px',
-      background: '#fee2e2',
-      color: '#991b1b',
-      borderRadius: '4px',
-      fontWeight: '600'
+    requiredToggle: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '14px'
+    },
+    checkbox: {
+      width: '18px',
+      height: '18px',
+      cursor: 'pointer'
     },
     fieldDescription: {
       fontSize: '13px',
@@ -441,9 +547,6 @@ export default function FieldMappingPage() {
                   <div>
                     <div style={styles.fieldLabel}>
                       <span style={styles.fieldName}>{field.label}</span>
-                      {field.required && (
-                        <span style={styles.requiredBadge}>Requerido</span>
-                      )}
                     </div>
                   </div>
                   
@@ -451,11 +554,24 @@ export default function FieldMappingPage() {
                     type="text"
                     value={invoiceMappings[field.key] || ''}
                     onChange={(e) => handleInvoiceMappingChange(field.key, e.target.value)}
-                    placeholder="Ej: Código, CodCliente, etc."
+                    placeholder={field.placeholder}
                     style={styles.input}
                     onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                     onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                   />
+
+                  <div style={styles.requiredToggle}>
+                    <input
+                      type="checkbox"
+                      id={`invoice-required-${field.key}`}
+                      checked={invoiceRequiredFields[field.key] !== false}
+                      onChange={(e) => handleInvoiceRequiredChange(field.key, e.target.checked)}
+                      style={styles.checkbox}
+                    />
+                    <label htmlFor={`invoice-required-${field.key}`}>
+                      Requerido
+                    </label>
+                  </div>
                 </div>
               ))}
             </div>
@@ -485,9 +601,6 @@ export default function FieldMappingPage() {
                   <div>
                     <div style={styles.fieldLabel}>
                       <span style={styles.fieldName}>{field.label}</span>
-                      {field.required && (
-                        <span style={styles.requiredBadge}>Requerido</span>
-                      )}
                     </div>
                   </div>
                   
@@ -495,11 +608,24 @@ export default function FieldMappingPage() {
                     type="text"
                     value={contactMappings[field.key] || ''}
                     onChange={(e) => handleContactMappingChange(field.key, e.target.value)}
-                    placeholder="Ej: Email, Correo, etc."
+                    placeholder={field.placeholder}
                     style={styles.input}
                     onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                     onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                   />
+
+                  <div style={styles.requiredToggle}>
+                    <input
+                      type="checkbox"
+                      id={`contact-required-${field.key}`}
+                      checked={contactRequiredFields[field.key] === true}
+                      onChange={(e) => handleContactRequiredChange(field.key, e.target.checked)}
+                      style={styles.checkbox}
+                    />
+                    <label htmlFor={`contact-required-${field.key}`}>
+                      Requerido
+                    </label>
+                  </div>
                 </div>
               ))}
             </div>

@@ -95,28 +95,23 @@ export async function validateFacturasFile(file, empresaConfig) {
     // Obtener headers (primera fila)
     const headers = data[0].map(h => normalizeColumnName(String(h || '')));
     
-    // Obtener columnas requeridas de la configuración
-    const requiredColumns = Object.entries(empresaConfig.campos_facturas)
-      .filter(([key, config]) => {
-        // Si es el campo moneda y la empresa tiene una sola moneda, no es requerido
-        if (key === 'mon' && empresaConfig.monedas.length === 1) {
-          return false;
-        }
-        return config.requerido;
-      })
-      .map(([key, _]) => normalizeColumnName(key));
+    // Obtener columnas requeridas de la configuración - SOLO las que están marcadas como requeridas
+    const requiredColumns = [];
+    const requiredFieldNames = [];
+    
+    Object.entries(empresaConfig.campos_facturas).forEach(([key, config]) => {
+      if (config.requerido) {
+        requiredColumns.push(normalizeColumnName(config.nombre));
+        requiredFieldNames.push(config.nombre);
+      }
+    });
     
     // Validar columnas requeridas
     const missingColumns = [];
-    requiredColumns.forEach(col => {
-      if (!headers.includes(col)) {
-        // Buscar también por el nombre del campo
-        const fieldName = Object.entries(empresaConfig.campos_facturas)
-          .find(([key, _]) => normalizeColumnName(key) === col)?.[1]?.nombre;
-        
-        if (fieldName && !headers.includes(normalizeColumnName(fieldName))) {
-          missingColumns.push(fieldName);
-        }
+    requiredFieldNames.forEach((fieldName, index) => {
+      const normalizedRequired = requiredColumns[index];
+      if (!headers.includes(normalizedRequired)) {
+        missingColumns.push(fieldName);
       }
     });
     
@@ -124,16 +119,11 @@ export async function validateFacturasFile(file, empresaConfig) {
       errors.push(`Faltan columnas obligatorias: ${missingColumns.join(', ')}`);
     }
     
-    // Encontrar índices de columnas
+    // Encontrar índices de columnas (todas, no solo las requeridas)
     const columnIndices = {};
     Object.entries(empresaConfig.campos_facturas).forEach(([key, config]) => {
-      const normalizedKey = normalizeColumnName(key);
       const normalizedName = normalizeColumnName(config.nombre);
-      
-      let index = headers.indexOf(normalizedKey);
-      if (index === -1) {
-        index = headers.indexOf(normalizedName);
-      }
+      const index = headers.indexOf(normalizedName);
       
       if (index !== -1) {
         columnIndices[key] = index;
@@ -168,29 +158,28 @@ export async function validateFacturasFile(file, empresaConfig) {
         continue;
       }
       
-      // Validar fecha de vencimiento si existe
+      // Validar fecha de vencimiento si existe y es requerida
       if (columnIndices.vencim !== undefined) {
         const vencim = row[columnIndices.vencim];
-        if (!vencim || vencim === '') {
-          rowsWithoutVencim++;
-        } else if (!validateDate(vencim)) {
-          warnings.push(`Fila ${i + 1}: formato de fecha inválido`);
+        if (empresaConfig.campos_facturas.vencim.requerido) {
+          if (!vencim || vencim === '') {
+            rowsWithoutVencim++;
+          } else if (!validateDate(vencim)) {
+            warnings.push(`Fila ${i + 1}: formato de fecha inválido`);
+          }
         }
       }
       
-      // Validar moneda
-      if (columnIndices.mon !== undefined) {
+      // Validar moneda si es requerida
+      if (columnIndices.mon !== undefined && empresaConfig.campos_facturas.mon.requerido) {
         const currency = row[columnIndices.mon];
         if (currency && !validateCurrency(currency, empresaConfig.monedas)) {
           invalidCurrencies++;
         }
-      } else if (empresaConfig.monedas.length > 1) {
-        // Solo es un problema si hay múltiples monedas disponibles
-        errors.push(`Fila ${i + 1}: falta especificar la moneda`);
       }
       
-      // Validar saldo
-      if (columnIndices.saldo !== undefined) {
+      // Validar saldo si es requerido
+      if (columnIndices.saldo !== undefined && empresaConfig.campos_facturas.saldo.requerido) {
         const saldo = row[columnIndices.saldo];
         if (isNaN(Number(saldo)) || saldo === '') {
           invalidSaldos++;
@@ -199,8 +188,8 @@ export async function validateFacturasFile(file, empresaConfig) {
     }
     
     // Agregar errores y advertencias específicos
-    if (rowsWithoutVencim > 0) {
-      warnings.push(`${rowsWithoutVencim} facturas no tienen fecha de vencimiento`);
+    if (rowsWithoutVencim > 0 && empresaConfig.campos_facturas.vencim.requerido) {
+      errors.push(`${rowsWithoutVencim} facturas no tienen fecha de vencimiento`);
     }
     
     if (invalidCurrencies > 0) {
@@ -254,22 +243,23 @@ export async function validateContactsFile(file, empresaConfig) {
     // Obtener headers (primera fila)
     const headers = data[0].map(h => normalizeColumnName(String(h || '')));
     
-    // Obtener columnas requeridas de la configuración
-    const requiredColumns = Object.entries(empresaConfig.campos_contactos)
-      .filter(([_, config]) => config.requerido)
-      .map(([key, _]) => normalizeColumnName(key));
+    // Obtener columnas requeridas de la configuración - SOLO las que están marcadas como requeridas
+    const requiredColumns = [];
+    const requiredFieldNames = [];
+    
+    Object.entries(empresaConfig.campos_contactos).forEach(([key, config]) => {
+      if (config.requerido) {
+        requiredColumns.push(normalizeColumnName(config.nombre));
+        requiredFieldNames.push(config.nombre);
+      }
+    });
     
     // Validar columnas requeridas
     const missingColumns = [];
-    requiredColumns.forEach(col => {
-      if (!headers.includes(col)) {
-        // Buscar también por el nombre del campo
-        const fieldName = Object.entries(empresaConfig.campos_contactos)
-          .find(([key, _]) => normalizeColumnName(key) === col)?.[1]?.nombre;
-        
-        if (fieldName && !headers.includes(normalizeColumnName(fieldName))) {
-          missingColumns.push(fieldName);
-        }
+    requiredFieldNames.forEach((fieldName, index) => {
+      const normalizedRequired = requiredColumns[index];
+      if (!headers.includes(normalizedRequired)) {
+        missingColumns.push(fieldName);
       }
     });
     
@@ -277,16 +267,16 @@ export async function validateContactsFile(file, empresaConfig) {
       errors.push(`Faltan columnas obligatorias: ${missingColumns.join(', ')}`);
     }
     
-    // Encontrar índice de columna email
-    let emailIndex = headers.indexOf(normalizeColumnName('email'));
-    if (emailIndex === -1) {
-      // Buscar por nombre alternativo
-      const emailFieldName = normalizeColumnName(empresaConfig.campos_contactos.email.nombre);
-      const altEmailIndex = headers.indexOf(emailFieldName);
-      if (altEmailIndex !== -1) {
-        emailIndex = altEmailIndex;
+    // Encontrar índices de columnas (todas, no solo las requeridas)
+    const columnIndices = {};
+    Object.entries(empresaConfig.campos_contactos).forEach(([key, config]) => {
+      const normalizedName = normalizeColumnName(config.nombre);
+      const index = headers.indexOf(normalizedName);
+      
+      if (index !== -1) {
+        columnIndices[key] = index;
       }
-    }
+    });
     
     // CAMBIO IMPORTANTE: Primero contar las filas con contenido real
     let actualDataRows = 0;
@@ -305,18 +295,18 @@ export async function validateContactsFile(file, empresaConfig) {
       }
     }
     
-    // Validar emails solo en filas con contenido
+    // Validar emails solo si el campo existe Y es requerido
     let invalidEmails = 0;
     const invalidEmailExamples = [];
     
-    for (let i = 1; i <= lastDataRowIndex; i++) {
-      const row = data[i];
-      if (!row || row.length === 0 || row.every(cell => !cell || String(cell).trim() === '')) {
-        continue;
-      }
-      
-      if (emailIndex !== -1) {
-        const email = row[emailIndex];
+    if (columnIndices.email !== undefined && empresaConfig.campos_contactos.email.requerido) {
+      for (let i = 1; i <= lastDataRowIndex; i++) {
+        const row = data[i];
+        if (!row || row.length === 0 || row.every(cell => !cell || String(cell).trim() === '')) {
+          continue;
+        }
+        
+        const email = row[columnIndices.email];
         if (email && email !== '' && !validateEmail(email)) {
           invalidEmails++;
           if (invalidEmailExamples.length < 5) {
@@ -324,15 +314,15 @@ export async function validateContactsFile(file, empresaConfig) {
           }
         }
       }
-    }
-    
-    if (invalidEmails > 0) {
-      warnings.push(`${invalidEmails} emails con formato inválido`);
-      invalidEmailExamples.forEach(example => {
-        warnings.push(example);
-      });
-      if (invalidEmails > 5) {
-        warnings.push(`... y ${invalidEmails - 5} más`);
+      
+      if (invalidEmails > 0) {
+        warnings.push(`${invalidEmails} emails con formato inválido`);
+        invalidEmailExamples.forEach(example => {
+          warnings.push(example);
+        });
+        if (invalidEmails > 5) {
+          warnings.push(`... y ${invalidEmails - 5} más`);
+        }
       }
     }
     
