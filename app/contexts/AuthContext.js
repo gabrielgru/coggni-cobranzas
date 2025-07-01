@@ -9,130 +9,166 @@ const AuthContext = createContext(null);
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos en milisegundos
 const ACTIVITY_CHECK_INTERVAL = 60 * 1000; // Verificar cada minuto
 
+// Sistema de monitoreo simple
+const logError = async (error, context) => {
+  console.error(`[${context}] Error:`, error);
+  
+  // En producción, enviar a servicio de monitoreo
+  if (process.env.NODE_ENV === 'production') {
+    // TODO: Integrar con Sentry, DataDog, o tu servicio preferido
+    // await sendToMonitoring({ error, context, timestamp: new Date() });
+  }
+};
+
 export function AuthProvider({ children }) {
   const [usuarioActual, setUsuarioActual] = useState(null);
   const [empresaActual, setEmpresaActual] = useState(null);
   const [idioma, setIdioma] = useState('es');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [userType, setUserType] = useState(null); // 'client' | 'admin' | null
 
-  // Función helper para formatear datos de empresa
-  const formatCompanyData = async (companyData) => {
-    // Obtener field mappings de la empresa con la estructura correcta
-    let fieldMappings = {
-      invoice: {},
-      contact: {}
-    };
-    
-    if (supabase) {
-      try {
-        const { data: mappings } = await supabase
-          .from('field_mappings')
-          .select('*')
-          .eq('company_id', companyData.id);
-        
-        if (mappings) {
-          // Organizar mappings por file_type
-          mappings.forEach(mapping => {
-            if (mapping.file_type === 'invoice') {
-              fieldMappings.invoice[mapping.internal_field_name] = {
-                column: mapping.company_field_name,
-                required: mapping.is_required
-              };
-            } else if (mapping.file_type === 'contact') {
-              fieldMappings.contact[mapping.internal_field_name] = {
-                column: mapping.company_field_name,
-                required: mapping.is_required
-              };
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Error loading field mappings:', error);
-      }
+  // Verificar salud de la base de datos
+  const checkDatabaseHealth = async () => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized');
+      await logError(error, 'DATABASE_INIT');
+      throw error;
     }
-    
-    // Formatear datos de Supabase al formato esperado por la app
-    return {
-      id: companyData.id,
-      nombre: companyData.name,
-      pais: 'UY', // Por ahora hardcoded
-      idioma_default: companyData.languages?.[0] || 'es',
-      idiomas_disponibles: companyData.languages || ['es'],
-      monedas: companyData.currencies || ['$'],
-      paises_telefono: ['UY', 'AR', 'ES'], // Por ahora hardcoded
-      webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook-test/cobranza-multiempresa',
-      admin_email: companyData.admin_email || '',
+
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .select('id')
+        .limit(1)
+        .single();
       
-      // Mapear field mappings a la estructura esperada usando la estructura correcta de la BD
-      campos_facturas: {
-        codigo: { 
-          nombre: fieldMappings.invoice.customer_code?.column || 'Código', 
-          requerido: fieldMappings.invoice.customer_code?.required !== false 
-        },
-        nombre: { 
-          nombre: fieldMappings.invoice.customer_name?.column || 'Nombre', 
-          requerido: fieldMappings.invoice.customer_name?.required !== false 
-        },
-        saldo: { 
-          nombre: fieldMappings.invoice.amount?.column || 'Saldo', 
-          requerido: fieldMappings.invoice.amount?.required !== false 
-        },
-        docum: { 
-          nombre: fieldMappings.invoice.document_number?.column || 'Docum', 
-          requerido: fieldMappings.invoice.document_number?.required !== false 
-        },
-        mon: { 
-          nombre: fieldMappings.invoice.currency?.column || 'Mon', 
-          requerido: fieldMappings.invoice.currency?.required === true || companyData.currencies?.length > 1 
-        },
-        vencim: { 
-          nombre: fieldMappings.invoice.due_date?.column || 'Vencim', 
-          requerido: fieldMappings.invoice.due_date?.required === true 
-        },
-        referencia: { 
-          nombre: fieldMappings.invoice.reference?.column || 'Referencia', 
-          requerido: fieldMappings.invoice.reference?.required === true 
-        }
-      },
-      campos_contactos: {
-        codigo: { 
-          nombre: fieldMappings.contact.customer_code?.column || 'Código', 
-          requerido: fieldMappings.contact.customer_code?.required !== false 
-        },
-        nombre: { 
-          nombre: fieldMappings.contact.customer_name?.column || 'Nombre', 
-          requerido: fieldMappings.contact.customer_name?.required !== false 
-        },
-        email: { 
-          nombre: fieldMappings.contact.email?.column || 'Email', 
-          requerido: fieldMappings.contact.email?.required === true // Respeta el flag de la BD
-        },
-        telefono: { 
-          nombre: fieldMappings.contact.phone?.column || 'Teléfono', 
-          requerido: fieldMappings.contact.phone?.required !== false 
-        },
-        contacto1: { 
-          nombre: fieldMappings.contact.phone_alt?.column || 'Contacto 1', 
-          requerido: fieldMappings.contact.phone_alt?.required === true 
-        },
-        contacto2: { 
-          nombre: fieldMappings.contact.whatsapp?.column || 'Contacto 2', 
-          requerido: fieldMappings.contact.whatsapp?.required === true 
-        }
-      }
-    };
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      await logError(error, 'DATABASE_HEALTH_CHECK');
+      throw new Error('Database connection failed');
+    }
   };
 
-  // Función para usar datos hardcoded como fallback
-  const loadFallbackCompanyData = async (companyId) => {
+  // Función helper para formatear datos de empresa
+  const formatCompanyData = async (companyData) => {
     try {
-      const { EMPRESAS_CONFIG } = await import('../utils/constants');
-      return EMPRESAS_CONFIG[companyId];
+      // Verificar conexión antes de proceder
+      await checkDatabaseHealth();
+
+      let fieldMappings = {
+        factura: {},
+        cliente: {}
+      };
+      
+      const { data: mappings, error } = await supabase
+        .from('field_mappings')
+        .select('*')
+        .eq('company_id', companyData.id);
+      
+      if (error) {
+        await logError(error, 'FIELD_MAPPINGS_FETCH');
+        throw new Error('Failed to load field mappings');
+      }
+      
+      if (mappings) {
+        // Organizar mappings por file_type
+        mappings.forEach(mapping => {
+          if (mapping.file_type === 'factura') {
+            fieldMappings.factura[mapping.internal_field_name] = {
+              column: mapping.company_field_name,
+              required: mapping.is_required
+            };
+          } else if (mapping.file_type === 'cliente') {
+            fieldMappings.cliente[mapping.internal_field_name] = {
+              column: mapping.company_field_name,
+              required: mapping.is_required
+            };
+          }
+        });
+      }
+      
+      // Formatear datos de Supabase al formato esperado por la app
+      return {
+        id: companyData.id,
+        nombre: companyData.name,
+        pais: 'UY', // Por ahora hardcoded
+        idioma_default: companyData.languages?.[0] || 'es',
+        idiomas_disponibles: companyData.languages || ['es'],
+        monedas: companyData.currencies || ['$'],
+        paises_telefono: ['UY', 'AR', 'ES'], // Por ahora hardcoded
+        webhook_url: process.env.NEXT_PUBLIC_WEBHOOK_URL || 'https://gabrielgru.app.n8n.cloud/webhook-test/cobranza-multiempresa',
+        admin_email: companyData.admin_email || '',
+        
+        // Mapear field mappings a la estructura esperada
+        campos_facturas: {
+          codigo: { 
+            nombre: fieldMappings.factura.invoice_client_code?.column || '', 
+            requerido: fieldMappings.factura.invoice_client_code?.required !== false 
+          },
+          // NOTA: El nombre del cliente viene de la ficha de clientes, no de facturas
+          nombre: { 
+            nombre: 'Nombre', // Placeholder, se obtiene del match con clientes
+            requerido: false  // No es requerido en facturas porque viene de clientes
+          },
+          saldo: { 
+            nombre: fieldMappings.factura.invoice_amount?.column || '', 
+            requerido: fieldMappings.factura.invoice_amount?.required !== false 
+          },
+          docum: { 
+            nombre: fieldMappings.factura.invoice_number?.column || '', 
+            requerido: fieldMappings.factura.invoice_number?.required !== false 
+          },
+          mon: { 
+            nombre: fieldMappings.factura.invoice_currency?.column || '', 
+            requerido: fieldMappings.factura.invoice_currency?.required === true || companyData.currencies?.length > 1 
+          },
+          vencim: { 
+            nombre: fieldMappings.factura.invoice_due_date?.column || '', 
+            requerido: fieldMappings.factura.invoice_due_date?.required === true 
+          },
+          referencia: { 
+            nombre: '', // Ya no existe en los nuevos mappings
+            requerido: false 
+          }
+        },
+        campos_contactos: {
+          codigo: { 
+            nombre: fieldMappings.cliente.client_code?.column || '', 
+            requerido: fieldMappings.cliente.client_code?.required !== false 
+          },
+          nombre: { 
+            nombre: fieldMappings.cliente.client_name?.column || '', 
+            requerido: fieldMappings.cliente.client_name?.required !== false 
+          },
+          email: { 
+            nombre: fieldMappings.cliente.client_email?.column || '', 
+            requerido: fieldMappings.cliente.client_email?.required === true
+          },
+          telefono: { 
+            nombre: fieldMappings.cliente.client_phone_1?.column || '', 
+            requerido: fieldMappings.cliente.client_phone_1?.required !== false 
+          },
+          contacto1: { 
+            nombre: fieldMappings.cliente.client_phone_2?.column || '', 
+            requerido: fieldMappings.cliente.client_phone_2?.required === true 
+          },
+          contacto2: { 
+            nombre: fieldMappings.cliente.client_phone_3?.column || '', 
+            requerido: fieldMappings.cliente.client_phone_3?.required === true 
+          },
+          // Campo adicional para La Perla
+          alias: {
+            nombre: fieldMappings.cliente.client_alias?.column || '',
+            requerido: fieldMappings.cliente.client_alias?.required === true
+          }
+        }
+      };
     } catch (error) {
-      console.error('Error loading fallback data:', error);
-      return null;
+      await logError(error, 'FORMAT_COMPANY_DATA');
+      throw error;
     }
   };
 
@@ -228,59 +264,55 @@ export function AuthProvider({ children }) {
           }
         }
 
-        // Verificar que el usuario existe en Supabase
-        if (supabase) {
-          try {
-            const { data: userData } = await supabase
-              .from('company_users')
+        try {
+          // Verificar salud de la base de datos primero
+          await checkDatabaseHealth();
+
+          // Verificar que el usuario existe en Supabase
+          const { data: userData, error: userError } = await supabase
+            .from('company_users')
+            .select('*')
+            .eq('email', savedUser)
+            .eq('company_id', savedCompanyId)
+            .single();
+
+          if (userError) {
+            await logError(userError, 'USER_VERIFICATION');
+            throw new Error('User verification failed');
+          }
+
+          if (userData) {
+            // Cargar datos de la empresa
+            const { data: companyData, error: companyError } = await supabase
+              .from('companies')
               .select('*')
-              .eq('email', savedUser)
-              .eq('company_id', savedCompanyId)
+              .eq('id', savedCompanyId)
               .single();
 
-            if (userData) {
-              // Cargar datos de la empresa
-              const { data: companyData } = await supabase
-                .from('companies')
-                .select('*')
-                .eq('id', savedCompanyId)
-                .single();
+            if (companyError) {
+              await logError(companyError, 'COMPANY_FETCH');
+              throw new Error('Company data fetch failed');
+            }
 
-              if (companyData) {
-                const formattedCompany = await formatCompanyData(companyData);
-                setUsuarioActual(savedUser);
-                setEmpresaActual(formattedCompany);
-                setIdioma(companyData.languages?.[0] || 'es');
-                setUserType(savedUserType || 'client');
-                setLastActivity(savedLastActivity ? parseInt(savedLastActivity) : Date.now());
-              }
-            }
-          } catch (supabaseError) {
-            console.error('Supabase error, falling back:', supabaseError);
-            // Intentar cargar datos de fallback
-            const fallbackData = await loadFallbackCompanyData(savedCompanyId);
-            if (fallbackData) {
+            if (companyData) {
+              const formattedCompany = await formatCompanyData(companyData);
               setUsuarioActual(savedUser);
-              setEmpresaActual(fallbackData);
-              setIdioma(fallbackData.idioma_default);
+              setEmpresaActual(formattedCompany);
+              setIdioma(companyData.languages?.[0] || 'es');
               setUserType(savedUserType || 'client');
-              setLastActivity(Date.now());
+              setLastActivity(savedLastActivity ? parseInt(savedLastActivity) : Date.now());
+              setError(null);
             }
           }
-        } else {
-          // No hay Supabase, usar fallback
-          const fallbackData = await loadFallbackCompanyData(savedCompanyId);
-          if (fallbackData) {
-            setUsuarioActual(savedUser);
-            setEmpresaActual(fallbackData);
-            setIdioma(fallbackData.idioma_default);
-            setUserType(savedUserType || 'client');
-            setLastActivity(Date.now());
-          }
+        } catch (error) {
+          console.error('Session restoration failed:', error);
+          setError('No se pudo restaurar la sesión. Por favor, inicia sesión nuevamente.');
+          logout();
         }
       }
     } catch (error) {
       console.error('Error checking session:', error);
+      setError('Error al verificar la sesión');
     } finally {
       setLoading(false);
     }
@@ -288,116 +320,84 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      // Si tenemos Supabase, verificar credenciales
-      if (supabase) {
-        try {
-          // 1. Verificar que el usuario existe en company_users
-          const { data: userData, error: userError } = await supabase
-            .from('company_users')
-            .select('*')
-            .eq('email', email)
-            .single();
+      // Verificar salud de la base de datos primero
+      await checkDatabaseHealth();
 
-          if (userError || !userData) {
-            throw new Error('Usuario no encontrado');
-          }
+      // 1. Verificar que el usuario existe en company_users
+      const { data: userData, error: userError } = await supabase
+        .from('company_users')
+        .select('*')
+        .eq('email', email)
+        .single();
 
-          // 2. Por ahora, verificar contraseña directamente (temporal)
-          if (userData.password !== password) {
-            throw new Error('Contraseña incorrecta');
-          }
-
-          // 3. Cargar datos de la empresa
-          console.log('Buscando empresa con ID:', userData.company_id);
-          
-          const { data: companyData, error: companyError } = await supabase
-            .from('companies')
-            .select('*')
-            .eq('id', userData.company_id)
-            .maybeSingle(); // Cambiado de .single() a .maybeSingle()
-
-          console.log('Resultado empresa:', companyData, 'Error:', companyError);
-
-          if (companyError || !companyData) {
-            throw new Error(`Empresa no encontrada: ${userData.company_id}`);
-          }
-
-          // 4. Establecer sesión
-          const formattedCompany = await formatCompanyData(companyData);
-          setUsuarioActual(email);
-          setEmpresaActual(formattedCompany);
-          setIdioma(companyData.languages?.[0] || 'es');
-          setUserType('client');
-          setLastActivity(Date.now());
-          
-          // Guardar en localStorage Y cookies
-          localStorage.setItem('coggni-user', email);
-          localStorage.setItem('coggni-company-id', userData.company_id);
-          localStorage.setItem('coggni-user-type', 'client');
-          localStorage.setItem('coggni-last-activity', Date.now().toString());
-          
-          // También guardar en cookies para el middleware
-          setCookie('coggni-user', email);
-          setCookie('coggni-company-id', userData.company_id);
-          setCookie('coggni-user-type', 'client');
-          setCookie('coggni-last-activity', Date.now().toString());
-          
-          return { success: true };
-          
-        } catch (supabaseError) {
-          console.error('Supabase login error:', supabaseError);
-          // Intentar con credenciales de fallback
-          const fallbackResult = await tryFallbackLogin(email, password);
-          if (fallbackResult.success) {
-            return fallbackResult;
-          }
-          throw supabaseError;
+      if (userError) {
+        await logError(userError, 'LOGIN_USER_FETCH');
+        if (userError.code === 'PGRST116') {
+          return { success: false, error: 'Usuario no encontrado' };
         }
-      } else {
-        // No hay Supabase, usar fallback directamente
-        return await tryFallbackLogin(email, password);
+        throw new Error('Error al verificar usuario');
       }
+
+      if (!userData) {
+        return { success: false, error: 'Usuario no encontrado' };
+      }
+
+      // 2. Por ahora, verificar contraseña directamente (temporal)
+      if (userData.password !== password) {
+        return { success: false, error: 'Contraseña incorrecta' };
+      }
+
+      // 3. Cargar datos de la empresa
+      console.log('Buscando empresa con ID:', userData.company_id);
+      
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', userData.company_id)
+        .maybeSingle(); // Cambiado de .single() a .maybeSingle()
+
+      if (companyError) {
+        await logError(companyError, 'LOGIN_COMPANY_FETCH');
+        throw new Error('Error al cargar datos de la empresa');
+      }
+
+      console.log('Resultado empresa:', companyData, 'Error:', companyError);
+
+      if (!companyData) {
+        throw new Error(`Empresa no encontrada: ${userData.company_id}`);
+      }
+
+      // 4. Establecer sesión
+      const formattedCompany = await formatCompanyData(companyData);
+      setUsuarioActual(email);
+      setEmpresaActual(formattedCompany);
+      setIdioma(companyData.languages?.[0] || 'es');
+      setUserType('client');
+      setLastActivity(Date.now());
+      setError(null);
+      
+      // Guardar en localStorage Y cookies
+      localStorage.setItem('coggni-user', email);
+      localStorage.setItem('coggni-company-id', userData.company_id);
+      localStorage.setItem('coggni-user-type', 'client');
+      localStorage.setItem('coggni-last-activity', Date.now().toString());
+      
+      // También guardar en cookies para el middleware
+      setCookie('coggni-user', email);
+      setCookie('coggni-company-id', userData.company_id);
+      setCookie('coggni-user-type', 'client');
+      setCookie('coggni-last-activity', Date.now().toString());
+      
+      return { success: true };
       
     } catch (error) {
+      await logError(error, 'LOGIN');
       console.error('Login error:', error);
-      return { success: false, error: error.message || 'Error al iniciar sesión' };
+      return { 
+        success: false, 
+        error: 'Error de conexión. Por favor, intenta más tarde.' 
+      };
     }
-  };
-
-  const tryFallbackLogin = async (email, password) => {
-    const DEMO_CREDENTIALS = {
-      'dental@dentallink.com': { empresa: 'dental-link', password: 'demo123' },
-      'admin@laperla.es': { empresa: 'la-perla', password: 'demo123' },
-      'test@testcompany.com': { empresa: 'test-company', password: 'demo123' }
-    };
-    
-    const cred = DEMO_CREDENTIALS[email];
-    if (cred && cred.password === password) {
-      const empresa = await loadFallbackCompanyData(cred.empresa);
-      
-      if (empresa) {
-        setUsuarioActual(email);
-        setEmpresaActual(empresa);
-        setIdioma(empresa.idioma_default);
-        setUserType('client');
-        setLastActivity(Date.now());
-        
-        localStorage.setItem('coggni-user', email);
-        localStorage.setItem('coggni-company-id', cred.empresa);
-        localStorage.setItem('coggni-user-type', 'client');
-        localStorage.setItem('coggni-last-activity', Date.now().toString());
-        
-        // También guardar en cookies
-        setCookie('coggni-user', email);
-        setCookie('coggni-company-id', cred.empresa);
-        setCookie('coggni-user-type', 'client');
-        setCookie('coggni-last-activity', Date.now().toString());
-        
-        return { success: true };
-      }
-    }
-    
-    return { success: false, error: 'Usuario o contraseña incorrectos' };
   };
 
   const logout = () => {
@@ -405,6 +405,7 @@ export function AuthProvider({ children }) {
     setEmpresaActual(null);
     setUserType(null);
     setLastActivity(Date.now());
+    setError(null);
     
     // Limpiar localStorage
     localStorage.removeItem('coggni-user');
@@ -430,6 +431,7 @@ export function AuthProvider({ children }) {
     empresaActual,
     idioma,
     loading,
+    error,
     userType,
     lastActivity,
     login,

@@ -73,7 +73,7 @@ export async function readCSVFile(file) {
   });
 }
 
-// Validar archivo de facturas
+// Validar archivo de facturas con field mappings dinámicos
 export async function validateFacturasFile(file, empresaConfig) {
   const errors = [];
   const warnings = [];
@@ -100,7 +100,7 @@ export async function validateFacturasFile(file, empresaConfig) {
     const requiredFieldNames = [];
     
     Object.entries(empresaConfig.campos_facturas).forEach(([key, config]) => {
-      if (config.requerido) {
+      if (config.requerido && config.nombre) { // Solo si tiene nombre definido
         requiredColumns.push(normalizeColumnName(config.nombre));
         requiredFieldNames.push(config.nombre);
       }
@@ -122,11 +122,13 @@ export async function validateFacturasFile(file, empresaConfig) {
     // Encontrar índices de columnas (todas, no solo las requeridas)
     const columnIndices = {};
     Object.entries(empresaConfig.campos_facturas).forEach(([key, config]) => {
-      const normalizedName = normalizeColumnName(config.nombre);
-      const index = headers.indexOf(normalizedName);
-      
-      if (index !== -1) {
-        columnIndices[key] = index;
+      if (config.nombre) { // Solo si tiene nombre definido
+        const normalizedName = normalizeColumnName(config.nombre);
+        const index = headers.indexOf(normalizedName);
+        
+        if (index !== -1) {
+          columnIndices[key] = index;
+        }
       }
     });
     
@@ -221,7 +223,7 @@ export async function validateFacturasFile(file, empresaConfig) {
   }
 }
 
-// Validar archivo de contactos
+// Validar archivo de contactos con field mappings dinámicos
 export async function validateContactsFile(file, empresaConfig) {
   const errors = [];
   const warnings = [];
@@ -248,7 +250,7 @@ export async function validateContactsFile(file, empresaConfig) {
     const requiredFieldNames = [];
     
     Object.entries(empresaConfig.campos_contactos).forEach(([key, config]) => {
-      if (config.requerido) {
+      if (config.requerido && config.nombre) { // Solo si tiene nombre definido
         requiredColumns.push(normalizeColumnName(config.nombre));
         requiredFieldNames.push(config.nombre);
       }
@@ -270,11 +272,13 @@ export async function validateContactsFile(file, empresaConfig) {
     // Encontrar índices de columnas (todas, no solo las requeridas)
     const columnIndices = {};
     Object.entries(empresaConfig.campos_contactos).forEach(([key, config]) => {
-      const normalizedName = normalizeColumnName(config.nombre);
-      const index = headers.indexOf(normalizedName);
-      
-      if (index !== -1) {
-        columnIndices[key] = index;
+      if (config.nombre) { // Solo si tiene nombre definido
+        const normalizedName = normalizeColumnName(config.nombre);
+        const index = headers.indexOf(normalizedName);
+        
+        if (index !== -1) {
+          columnIndices[key] = index;
+        }
       }
     });
     

@@ -53,37 +53,79 @@ export async function GET(request, { params }) {
     const { data: fieldMappings } = await supabase
       .from('field_mappings')
       .select('*')
-      .eq('company_id', companyId);
+      .eq('company_id', companyId)
+      .order('file_type')
+      .order('field_order');
 
-    // Procesar field mappings
+    // Procesar field mappings con la nueva estructura
     const invoiceFields = {};
-    const contactFields = {};
+    const clientFields = {};
+    const requiredInvoiceFields = [];
+    const requiredClientFields = [];
     
     if (fieldMappings) {
       fieldMappings.forEach(mapping => {
-        if (mapping.field_type.startsWith('invoice_')) {
-          invoiceFields[mapping.field_type.replace('invoice_', '')] = mapping.source_column;
-        } else if (mapping.field_type.startsWith('contact_')) {
-          contactFields[mapping.field_type.replace('contact_', '')] = mapping.source_column;
+        if (mapping.file_type === 'factura') {
+          // Mapear internal_field_name a company_field_name
+          invoiceFields[mapping.internal_field_name] = mapping.company_field_name;
+          
+          // Agregar a campos requeridos si corresponde
+          if (mapping.is_required) {
+            requiredInvoiceFields.push(mapping.internal_field_name);
+          }
+        } else if (mapping.file_type === 'cliente') {
+          // Mapear internal_field_name a company_field_name
+          clientFields[mapping.internal_field_name] = mapping.company_field_name;
+          
+          // Agregar a campos requeridos si corresponde
+          if (mapping.is_required) {
+            requiredClientFields.push(mapping.internal_field_name);
+          }
         }
       });
+    }
+
+    // Determinar moneda por defecto según la empresa
+    const defaultCurrency = company.currencies?.[0] || '$';
+    
+    // Determinar códigos de país según la empresa
+    let countryCode = ['UY']; // Default
+    if (companyId === 'dental-link') {
+      countryCode = ['UY', 'AR', 'ES'];
+    } else if (companyId === 'la-perla') {
+      countryCode = ['ES', 'FR', 'IT'];
     }
 
     // TODO: Buscar messaging config cuando exista la tabla
     const messagingConfig = getDefaultMessagingConfig(companyId);
 
-    // Construir respuesta completa
+    // Construir respuesta completa con el formato que espera n8n
     const responseData = {
       id: company.id,
       name: company.name,
-      currencies: company.currencies || [],
-      languages: company.languages || [],
-      is_active: company.is_active,
+      defaults: {
+        currency: defaultCurrency,
+        country_codes: countryCode
+      },
       
-      // Field mappings para n8n
+      // Field mappings para n8n - usando los nombres en inglés como keys
       field_mappings: {
-        invoices: invoiceFields,
-        contacts: contactFields
+        invoice: invoiceFields,
+        client: clientFields
+      },
+      
+      // Campos requeridos
+      required_fields: {
+        invoice: requiredInvoiceFields,
+        client: requiredClientFields
+      },
+      
+      // Información adicional de la empresa
+      company_info: {
+        currencies: company.currencies || [],
+        languages: company.languages || [],
+        is_active: company.is_active,
+        admin_email: company.admin_email || ''
       },
       
       // Configuración de mensajería
@@ -144,12 +186,12 @@ function getDefaultMessagingConfig(companyId) {
     },
     'la-perla': {
       payment_link_whatsapp: false,
-      payment_link_email: true,
+      payment_link_email: false, // La Perla no tiene email
       show_days_overdue: true,
       include_company_logo: true,
       greeting_style: 'estimado',
       whatsapp_footer: 'Atentamente,\nLa Perla',
-      email_footer: 'Atentamente,<br>Departamento de Administración<br>La Perla',
+      email_footer: '', // No se usa porque no tienen email
       currency_format: {
         thousand_separator: '.',
         decimal_separator: ',',
@@ -175,59 +217,74 @@ function getDefaultMessagingConfig(companyId) {
   return configs[companyId] || configs['dental-link'];
 }
 
-// Mock data para desarrollo
+// Mock data para desarrollo - ACTUALIZADO con nueva estructura
 function getMockData(companyId) {
   const companies = {
     'dental-link': {
       id: 'dental-link',
       name: 'Dental Link',
-      currencies: ['$', 'U$S'],
-      languages: ['es'],
-      is_active: true,
+      defaults: {
+        currency: '$',
+        country_codes: ['UY', 'AR', 'ES']
+      },
       field_mappings: {
-        invoices: {
-          codigo: 'Código',
-          nombre: 'Nombre',
-          saldo: 'Saldo',
-          docum: 'Docum',
-          mon: 'Mon',
-          vencim: 'Vencim',
-          referencia: 'Referencia'
+        invoice: {
+          invoice_number: 'Docum.',
+          invoice_client_code: 'Código',
+          invoice_currency: 'Mon',
+          invoice_amount: 'Saldo',
+          invoice_due_date: 'Vencim.'
         },
-        contacts: {
-          codigo: 'Código',
-          nombre: 'Nombre',
-          email: 'Email',
-          telefono: 'Teléfono',
-          contacto1: 'Contacto 1',
-          contacto2: 'Contacto 2'
+        client: {
+          client_code: 'Código',
+          client_name: 'Nombre',
+          client_email: 'Email',
+          client_phone_1: 'Teléfono',
+          client_phone_2: 'Contacto 1',
+          client_phone_3: 'Contacto 2'
         }
+      },
+      required_fields: {
+        invoice: ['invoice_number', 'invoice_client_code', 'invoice_currency', 'invoice_amount', 'invoice_due_date'],
+        client: ['client_code', 'client_name', 'client_email', 'client_phone_1']
+      },
+      company_info: {
+        currencies: ['$', 'U$S'],
+        languages: ['es'],
+        is_active: true,
+        admin_email: 'admin@dentallink.com'
       }
     },
     'la-perla': {
       id: 'la-perla',
       name: 'La Perla',
-      currencies: ['EUR'],
-      languages: ['es'],
-      is_active: true,
+      defaults: {
+        currency: 'EUR',
+        country_codes: ['ES', 'FR', 'IT']
+      },
       field_mappings: {
-        invoices: {
-          codigo: 'Código Cliente',
-          nombre: 'Razón Social',
-          saldo: 'Importe Pendiente',
-          docum: 'Nº Factura',
-          mon: 'Divisa',
-          vencim: 'Fecha Vto',
-          referencia: 'Referencia'
+        invoice: {
+          invoice_number: 'Nº',
+          invoice_client_code: 'Nº cliente',
+          invoice_amount: 'Importe pendiente',
+          invoice_due_date: 'Fecha vencimiento'
         },
-        contacts: {
-          codigo: 'Código Cliente',
-          nombre: 'Razón Social',
-          email: 'Correo Electrónico',
-          telefono: 'Teléfono Principal',
-          contacto1: 'Contacto Comercial',
-          contacto2: 'Contacto Administrativo'
+        client: {
+          client_code: 'Nº',
+          client_name: 'Nombre',
+          client_alias: 'Alias',
+          client_phone_1: 'Nº teléfono'
         }
+      },
+      required_fields: {
+        invoice: ['invoice_number', 'invoice_client_code', 'invoice_amount', 'invoice_due_date'],
+        client: ['client_code', 'client_name', 'client_phone_1']
+      },
+      company_info: {
+        currencies: ['EUR'],
+        languages: ['es'],
+        is_active: true,
+        admin_email: 'admin@laperla.com'
       }
     }
   };

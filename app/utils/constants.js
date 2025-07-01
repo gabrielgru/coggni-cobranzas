@@ -1,90 +1,4 @@
-// Configuraciones de empresa
-export const EMPRESAS_CONFIG = {
-  'dental-link': {
-    id: 'dental-link',
-    nombre: 'Dental Link',
-    pais: 'UY',
-    idioma_default: 'es',
-    idiomas_disponibles: ['es'],
-    monedas: ['$', 'U$S'],
-    paises_telefono: ['UY', 'AR', 'ES'],
-    webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
-    admin_email: 'admin@dentallink.com',
-    campos_facturas: {
-      codigo: { nombre: 'Código', requerido: true },
-      nombre: { nombre: 'Nombre', requerido: true },
-      saldo: { nombre: 'Saldo', requerido: true },
-      docum: { nombre: 'Docum', requerido: true },
-      mon: { nombre: 'Mon', requerido: true },
-      vencim: { nombre: 'Vencim', requerido: false },
-      referencia: { nombre: 'Referencia', requerido: false }
-    },
-    campos_contactos: {
-      codigo: { nombre: 'Código', requerido: true },
-      nombre: { nombre: 'Nombre', requerido: true },
-      email: { nombre: 'Email', requerido: true },
-      telefono: { nombre: 'Teléfono', requerido: true },
-      contacto1: { nombre: 'Contacto 1', requerido: false },
-      contacto2: { nombre: 'Contacto 2', requerido: false }
-    }
-  },
-  'la-perla': {
-    id: 'la-perla',
-    nombre: 'La Perla',
-    pais: 'ES',
-    idioma_default: 'es',
-    idiomas_disponibles: ['es'],
-    monedas: ['EUR'],
-    paises_telefono: ['ES', 'FR', 'IT'],
-    webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
-    admin_email: 'admin@laperla.com',
-    campos_facturas: {
-      codigo: { nombre: 'Código Cliente', requerido: true },
-      nombre: { nombre: 'Razón Social', requerido: true },
-      saldo: { nombre: 'Importe Pendiente', requerido: true },
-      docum: { nombre: 'Nº Factura', requerido: true },
-      mon: { nombre: 'Divisa', requerido: false },
-      vencim: { nombre: 'Fecha Vto', requerido: false },
-      referencia: { nombre: 'Referencia', requerido: false }
-    },
-    campos_contactos: {
-      codigo: { nombre: 'Código Cliente', requerido: true },
-      nombre: { nombre: 'Razón Social', requerido: true },
-      email: { nombre: 'Correo Electrónico', requerido: true },
-      telefono: { nombre: 'Teléfono Principal', requerido: true },
-      contacto1: { nombre: 'Contacto Comercial', requerido: false },
-      contacto2: { nombre: 'Contacto Administrativo', requerido: false }
-    }
-  },
-  'test-company': {
-    id: 'test-company',
-    nombre: 'Test Company',
-    pais: 'US',
-    idioma_default: 'en',
-    idiomas_disponibles: ['en', 'es'],
-    monedas: ['U$S'],
-    paises_telefono: ['US', 'CA', 'MX'],
-    webhook_url: 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
-    admin_email: 'admin@testcompany.com',
-    campos_facturas: {
-      codigo: { nombre: 'Customer Code', requerido: true },
-      nombre: { nombre: 'Customer Name', requerido: true },
-      saldo: { nombre: 'Outstanding Balance', requerido: true },
-      docum: { nombre: 'Invoice Number', requerido: true },
-      mon: { nombre: 'Currency', requerido: true },
-      vencim: { nombre: 'Due Date', requerido: false },
-      referencia: { nombre: 'Reference', requerido: false }
-    },
-    campos_contactos: {
-      codigo: { nombre: 'Customer Code', requerido: true },
-      nombre: { nombre: 'Customer Name', requerido: true },
-      email: { nombre: 'Email Address', requerido: true },
-      telefono: { nombre: 'Phone Number', requerido: true },
-      contacto1: { nombre: 'Primary Contact', requerido: false },
-      contacto2: { nombre: 'Secondary Contact', requerido: false }
-    }
-  }
-};
+// Solo textos de la UI - Los datos vienen SIEMPRE de la base de datos
 
 // Textos por idioma
 export const TEXTOS = {
@@ -94,7 +8,9 @@ export const TEXTOS = {
       usuario: 'Correo Electrónico',
       password: 'Contraseña',
       ingresar: 'Ingresar',
-      error: 'Usuario o contraseña incorrectos'
+      error: 'Usuario o contraseña incorrectos',
+      errorConexion: 'Error de conexión. Por favor, intenta más tarde.',
+      errorServidor: 'No se puede conectar con el servidor'
     },
     dashboard: {
       titulo: 'Sistema de Cobranza Automática',
@@ -121,6 +37,7 @@ export const TEXTOS = {
       procesando: 'Procesando...',
       completado: '¡Proceso completado!',
       error: 'Error',
+      errorCarga: 'Error al cargar los datos. Por favor, recarga la página.',
       whatsappDesc: 'Envía primero por WhatsApp cuando esté disponible. Si el cliente no tiene WhatsApp registrado, se enviará automáticamente por Email.',
       ambosDesc: 'Envía por WhatsApp y Email simultáneamente cuando ambos estén disponibles. Máximo alcance garantizado.',
       soloWhatsappDesc: 'Envía únicamente por WhatsApp. Los clientes sin WhatsApp registrado no recibirán el recordatorio.',
@@ -158,7 +75,9 @@ export const TEXTOS = {
       usuario: 'Email Address',
       password: 'Password',
       ingresar: 'Sign In',
-      error: 'Invalid username or password'
+      error: 'Invalid username or password',
+      errorConexion: 'Connection error. Please try again later.',
+      errorServidor: 'Cannot connect to server'
     },
     dashboard: {
       titulo: 'Automated Collection System',
@@ -185,6 +104,7 @@ export const TEXTOS = {
       procesando: 'Processing...',
       completado: 'Process completed!',
       error: 'Error',
+      errorCarga: 'Error loading data. Please reload the page.',
       whatsappDesc: 'Send first via WhatsApp when available. If customer has no registered WhatsApp, will automatically send via Email.',
       ambosDesc: 'Send via WhatsApp and Email simultaneously when both are available. Maximum reach guaranteed.',
       soloWhatsappDesc: 'Send only via WhatsApp. Customers without registered WhatsApp will not receive reminders.',
@@ -216,11 +136,4 @@ export const TEXTOS = {
       cuandoApagado: 'When off: only overdue invoices at the time of sending will be included.'
     }
   }
-};
-
-// Credenciales demo
-export const DEMO_CREDENTIALS = {
-  'dental@dentallink.com': { empresa: 'dental-link', password: 'demo123' },
-  'admin@laperla.es': { empresa: 'la-perla', password: 'demo123' },
-  'test@testcompany.com': { empresa: 'test-company', password: 'demo123' }
 };

@@ -490,54 +490,56 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Estrategia de Envío */}
-        <div className="section">
-          <h2>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
-            </svg>
-            {textos.estrategiaEnvio}
-          </h2>
-          
-          <div className="strategy-cards">
-            {[
-              { id: 'whatsapp_primero', titulo: textos.whatsappPrioritario, desc: textos.whatsappDesc },
-              { id: 'ambos_canales', titulo: textos.ambosCanales, desc: textos.ambosDesc },
-              { id: 'solo_whatsapp', titulo: textos.soloWhatsapp, desc: textos.soloWhatsappDesc },
-              { id: 'solo_email', titulo: textos.soloEmail, desc: textos.soloEmailDesc }
-            ].map((opcion) => (
-              <label
-                key={opcion.id}
-                className={`strategy-card ${strategy === opcion.id ? 'selected' : ''}`}
-                role="radio"
-                aria-checked={strategy === opcion.id}
-              >
-                <input
-                  type="radio"
-                  name="strategy"
-                  value={opcion.id}
-                  checked={strategy === opcion.id}
-                  onChange={(e) => setStrategy(e.target.value)}
-                  aria-label={opcion.titulo}
-                />
-                
-                <div className="strategy-header">
-                  <div className="strategy-title">{opcion.titulo}</div>
-                </div>
-                
-                <div className="strategy-description">{opcion.desc}</div>
-                
-                {strategy === opcion.id && (
-                  <div className="checkmark">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                      <path d="M20 6L9 17L4 12"/>
-                    </svg>
+        {/* Estrategia de Envío - Solo mostrar si la empresa tiene email disponible */}
+        {empresaActual.campos_contactos.email?.nombre && (
+          <div className="section">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
+              </svg>
+              {textos.estrategiaEnvio}
+            </h2>
+            
+            <div className="strategy-cards">
+              {[
+                { id: 'whatsapp_primero', titulo: textos.whatsappPrioritario, desc: textos.whatsappDesc },
+                { id: 'ambos_canales', titulo: textos.ambosCanales, desc: textos.ambosDesc },
+                { id: 'solo_whatsapp', titulo: textos.soloWhatsapp, desc: textos.soloWhatsappDesc },
+                { id: 'solo_email', titulo: textos.soloEmail, desc: textos.soloEmailDesc }
+              ].map((opcion) => (
+                <label
+                  key={opcion.id}
+                  className={`strategy-card ${strategy === opcion.id ? 'selected' : ''}`}
+                  role="radio"
+                  aria-checked={strategy === opcion.id}
+                >
+                  <input
+                    type="radio"
+                    name="strategy"
+                    value={opcion.id}
+                    checked={strategy === opcion.id}
+                    onChange={(e) => setStrategy(e.target.value)}
+                    aria-label={opcion.titulo}
+                  />
+                  
+                  <div className="strategy-header">
+                    <div className="strategy-title">{opcion.titulo}</div>
                   </div>
-                )}
-              </label>
-            ))}
+                  
+                  <div className="strategy-description">{opcion.desc}</div>
+                  
+                  {strategy === opcion.id && (
+                    <div className="checkmark">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                        <path d="M20 6L9 17L4 12"/>
+                      </svg>
+                    </div>
+                  )}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Incluir facturas próximas a vencer */}
         <OptionalSection
