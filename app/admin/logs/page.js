@@ -188,6 +188,16 @@ export default function LogsPage() {
         </div>
       </div>
 
+      {/* Estadísticas de mensajes */}
+      <div className="admin-section">
+        <h3>Estadísticas</h3>
+        <ul>
+          <li>Mensajes de producción: {logs.filter(msg => !msg.is_test).length}</li>
+          <li>Mensajes de prueba: {logs.filter(msg => msg.is_test).length}</li>
+          <li>Total: {logs.length}</li>
+        </ul>
+      </div>
+
       {/* Tabla de logs */}
       <div className="admin-section">
         <h2>Últimos {logs.length} registros</h2>
