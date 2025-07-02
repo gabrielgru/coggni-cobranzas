@@ -33,12 +33,13 @@ export default function Dashboard() {
   // Debug completo de la configuración
   console.log('Dashboard - Empresa actual completa:', empresaActual);
   console.log('Dashboard - Campos contactos:', empresaActual?.campos_contactos);
-  console.log('Dashboard - Email config:', {
-    campo_email: empresaActual?.campos_contactos?.email,
-    nombre: empresaActual?.campos_contactos?.email?.nombre,
-    length: empresaActual?.campos_contactos?.email?.nombre?.length,
-    tipo: typeof empresaActual?.campos_contactos?.email?.nombre
+  console.log('Dashboard - Email config detallado:', {
+    campo_email_completo: JSON.stringify(empresaActual?.campos_contactos?.email),
+    keys: empresaActual?.campos_contactos?.email ? Object.keys(empresaActual.campos_contactos.email) : 'no keys',
+    tiene_nombre: 'nombre' in (empresaActual?.campos_contactos?.email || {}),
+    valor_nombre: empresaActual?.campos_contactos?.email?.nombre
   });
+  console.log('Todos los campos_contactos:', JSON.stringify(empresaActual?.campos_contactos, null, 2));
 
   // Estados principales
   const [selectedFile, setSelectedFile] = useState(null);
