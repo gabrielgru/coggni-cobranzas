@@ -19,6 +19,10 @@ export default function LoginForm({
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     
+    console.log('[LoginForm] Submit started');
+    console.log('[LoginForm] Email:', usuario);
+    console.log('[LoginForm] Browser:', navigator.userAgent);
+    
     if (!usuario || !password) {
       setError('Por favor complete todos los campos');
       return;
@@ -28,18 +32,31 @@ export default function LoginForm({
     setError('');
 
     try {
+      console.log('[LoginForm] Calling login...');
       const result = await login(usuario, password);
+      console.log('[LoginForm] Login result:', result);
       
       if (result.success) {
+        console.log('[LoginForm] Login successful');
         // Llamar callback de éxito si existe
         if (onSuccess) {
           onSuccess(result);
         }
       } else {
+        console.error('[LoginForm] Login failed:', result.error);
+        // Mostrar el error real que viene del backend
         setError(result.error || 'Usuario o contraseña incorrectos');
       }
     } catch (err) {
-      setError('Error al iniciar sesión. Por favor intente nuevamente.');
+      console.error('[LoginForm] Login exception:', err);
+      console.error('[LoginForm] Error stack:', err.stack);
+      
+      // En desarrollo, mostrar el error real
+      if (process.env.NODE_ENV === 'development') {
+        setError(`Error: ${err.message}`);
+      } else {
+        setError('Error al iniciar sesión. Por favor intente nuevamente.');
+      }
     } finally {
       setIsLoading(false);
     }

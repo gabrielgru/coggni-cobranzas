@@ -31,8 +31,11 @@ export function AuthProvider({ children }) {
 
   // Verificar salud de la base de datos
   const checkDatabaseHealth = async () => {
+    console.log('[AuthContext] Database health check started');
+    
     if (!supabase) {
       const error = new Error('Supabase client not initialized');
+      console.error('[AuthContext] Database health check failed: No client');
       await logError(error, 'DATABASE_INIT');
       throw error;
     }
@@ -44,9 +47,15 @@ export function AuthProvider({ children }) {
         .limit(1)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('[AuthContext] Database health query failed:', error);
+        throw error;
+      }
+      
+      console.log('[AuthContext] Database health check passed');
       return true;
     } catch (error) {
+      console.error('[AuthContext] Database health check error:', error);
       await logError(error, 'DATABASE_HEALTH_CHECK');
       throw new Error('Database connection failed');
     }
@@ -323,11 +332,28 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
+    console.log('[AuthContext] Login attempt started');
+    console.log('[AuthContext] Email:', email);
+    console.log('[AuthContext] Supabase client exists:', !!supabase);
+    
+    // Verificar el cliente de Supabase primero
+    if (!supabase) {
+      console.error('[AuthContext] CRITICAL: Supabase client is null!');
+      console.error('[AuthContext] Check environment variables');
+      return { 
+        success: false, 
+        error: 'Error de configuración. El servicio de base de datos no está disponible.' 
+      };
+    }
+    
     try {
       // Verificar salud de la base de datos primero
+      console.log('[AuthContext] Checking database health...');
       await checkDatabaseHealth();
+      console.log('[AuthContext] Database health check passed');
 
       // 1. Verificar que el usuario existe en company_users
+      console.log('[AuthContext] Fetching user from company_users...');
       const { data: userData, error: userError } = await supabase
         .from('company_users')
         .select('*')
@@ -335,44 +361,53 @@ export function AuthProvider({ children }) {
         .single();
 
       if (userError) {
+        console.error('[AuthContext] User fetch error:', userError);
         await logError(userError, 'LOGIN_USER_FETCH');
         if (userError.code === 'PGRST116') {
           return { success: false, error: 'Usuario no encontrado' };
         }
-        throw new Error('Error al verificar usuario');
+        return { success: false, error: `Error al verificar usuario: ${userError.message}` };
       }
 
       if (!userData) {
+        console.log('[AuthContext] No user data found');
         return { success: false, error: 'Usuario no encontrado' };
       }
 
+      console.log('[AuthContext] User found, checking password...');
+      
       // 2. Por ahora, verificar contraseña directamente (temporal)
       if (userData.password !== password) {
+        console.log('[AuthContext] Password mismatch');
         return { success: false, error: 'Contraseña incorrecta' };
       }
 
       // 3. Cargar datos de la empresa
-      console.log('Buscando empresa con ID:', userData.company_id);
+      console.log('[AuthContext] Loading company data for ID:', userData.company_id);
       
       const { data: companyData, error: companyError } = await supabase
         .from('companies')
         .select('*')
         .eq('id', userData.company_id)
-        .maybeSingle(); // Cambiado de .single() a .maybeSingle()
+        .maybeSingle();
 
       if (companyError) {
+        console.error('[AuthContext] Company fetch error:', companyError);
         await logError(companyError, 'LOGIN_COMPANY_FETCH');
-        throw new Error('Error al cargar datos de la empresa');
+        return { success: false, error: `Error al cargar empresa: ${companyError.message}` };
       }
-
-      console.log('Resultado empresa:', companyData, 'Error:', companyError);
 
       if (!companyData) {
-        throw new Error(`Empresa no encontrada: ${userData.company_id}`);
+        console.error('[AuthContext] No company found with ID:', userData.company_id);
+        return { success: false, error: `Empresa no encontrada: ${userData.company_id}` };
       }
+
+      console.log('[AuthContext] Company data loaded successfully');
 
       // 4. Establecer sesión
       const formattedCompany = await formatCompanyData(companyData);
+      console.log('[AuthContext] Session setup complete');
+      
       setUsuarioActual(email);
       setEmpresaActual(formattedCompany);
       setIdioma(companyData.languages?.[0] || 'es');
@@ -392,11 +427,22 @@ export function AuthProvider({ children }) {
       setCookie('coggni-user-type', 'client');
       setCookie('coggni-last-activity', Date.now().toString());
       
+      console.log('[AuthContext] Login successful');
       return { success: true };
       
     } catch (error) {
+      console.error('[AuthContext] Login error caught:', error);
+      console.error('[AuthContext] Error stack:', error.stack);
       await logError(error, 'LOGIN');
-      console.error('Login error:', error);
+      
+      // Devolver el error real en desarrollo
+      if (process.env.NODE_ENV === 'development') {
+        return { 
+          success: false, 
+          error: `Error: ${error.message}` 
+        };
+      }
+      
       return { 
         success: false, 
         error: 'Error de conexión. Por favor, intenta más tarde.' 
