@@ -3,5 +3,9 @@
 import LoginForm from '../../components/shared/LoginForm';
 
 export default function Login() {
-  return <LoginForm showSessionNote={false} />;
+  return (
+    <div className="login-container">
+      <LoginForm showSessionNote={false} />
+    </div>
+  );
 }
