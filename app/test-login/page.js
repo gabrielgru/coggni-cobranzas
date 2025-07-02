@@ -9,7 +9,42 @@ export default function TestLogin() {
   const [password, setPassword] = useState('')
   
   const testLogin = async () => {
-    setResult({ status: 'Testing...', timestamp: new Date().toISOString() })
+    setResult({ status: 'Testing...' })
+    
+    // Debug: Verificar el cliente de Supabase
+    console.log('[Test] Supabase URL:', supabase.supabaseUrl)
+    console.log('[Test] Supabase Key (first 10 chars):', supabase.supabaseKey?.substring(0, 10))
+
+    // Test 0: Query sin filtros para ver qué puede ver el cliente
+    try {
+      const { data: allCompaniesTest, error: allError } = await supabase
+        .from('companies')
+        .select('id, name')
+      
+      console.log('[Test] All companies query:', { data: allCompaniesTest, error: allError })
+      
+      // También probar con count
+      const { count, error: countError } = await supabase
+        .from('companies')
+        .select('*', { count: 'exact', head: true })
+      
+      console.log('[Test] Companies count:', { count, error: countError })
+      
+      setResult({
+        debug: {
+          allCompanies: allCompaniesTest,
+          companiesCount: count,
+          errors: { all: allError, count: countError }
+        }
+      })
+      
+      // Si no puede ver ninguna empresa, no continuar
+      if (!allCompaniesTest || allCompaniesTest.length === 0) {
+        return
+      }
+    } catch (debugError) {
+      console.error('[Test] Debug error:', debugError)
+    }
     
     try {
       // Test 1: Verificar cliente
