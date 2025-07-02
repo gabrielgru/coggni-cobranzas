@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/app/contexts/AuthContext';
-import { TEXTOS } from '@/app/utils/constants';
+import { useAuth } from '../../contexts/AuthContext';
+import { TEXTOS } from '../../utils/constants';
 import Image from 'next/image';
 
 export default function LoginForm({ 
