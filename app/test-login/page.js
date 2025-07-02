@@ -41,11 +41,36 @@ export default function TestLogin() {
       
       // Test 4: Query company
       if (userData && passwordMatch) {
+        // Primero, mostrar info del usuario
+        console.log('User company_id:', userData.company_id)
+        
+        // Hacer query más flexible
         const { data: companyData, error: companyError } = await supabase
           .from('companies')
           .select('*')
           .eq('id', userData.company_id)
-          .single()
+        
+        // Ver qué devuelve
+        console.log('Company query result:', companyData)
+        console.log('Company query error:', companyError)
+        
+        if (!companyData || companyData.length === 0) {
+          // Intentar ver qué empresas existen
+          const { data: allCompanies } = await supabase
+            .from('companies')
+            .select('id, name')
+            
+          setResult({
+            step: 'Company not found',
+            userCompanyId: userData.company_id,
+            existingCompanies: allCompanies,
+            userData: {
+              email: userData.email,
+              company_id: userData.company_id
+            }
+          })
+          return
+        }
         
         if (companyError) {
           setResult({
