@@ -16,7 +16,21 @@ export default function Dashboard() {
   
   // TEMPORAL - Debug
   console.log('Dashboard cargado. Empresa actual:', empresaActual);
-  
+  // Agregar después de la línea 17 donde ya tienes un console.log
+  console.log('Campo email configurado:', {
+    tiene_email: empresaActual?.campos_contactos?.email,
+    nombre_email: empresaActual?.campos_contactos?.email?.nombre,
+    es_truthy: !!empresaActual?.campos_contactos?.email?.nombre,
+    empresa_id: empresaActual?.id,
+    empresa_nombre: empresaActual?.nombre,
+    empresa_monedas: empresaActual?.monedas,
+    empresa_paises_telefono: empresaActual?.paises_telefono,
+    empresa_idiomas_disponibles: empresaActual?.idiomas_disponibles,
+    empresa_campos_facturas: empresaActual?.campos_facturas,
+    empresa_campos_contactos: empresaActual?.campos_contactos
+  });
+
+
   // Estados principales
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedContactsFile, setSelectedContactsFile] = useState(null);
