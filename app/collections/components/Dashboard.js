@@ -336,7 +336,6 @@ export default function Dashboard() {
     setTimeout(() => {
       router.push('/collections/success');
     }, 1500);
-
   } catch (error) {
     // En caso de error, mantener en la misma página
     setStatusMessage({
