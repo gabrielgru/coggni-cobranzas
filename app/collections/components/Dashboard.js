@@ -267,6 +267,27 @@ export default function Dashboard() {
         throw new Error('No se pudo inicializar el procesamiento. Por favor, intenta nuevamente.');
       }
 
+
+      // AGREGAR AQUÍ EL TIMEOUT
+      setTimeout(async () => {
+        if (logId) {
+          try {
+            const response = await fetch(`/api/processing-status/${logId}`);
+            const data = await response.json();
+            
+            if (data.status === 'processing') {
+              // Aún procesando después de 5 minutos = error
+              await updateProcessingLog(logId, 'error');
+              console.log('⚠️ Proceso marcado como error por timeout');
+            }
+          } catch (error) {
+            console.error('Error verificando timeout:', error);
+          }
+        }
+      }, 300000); // 5 minutos
+
+
+
       // Simular progreso
       await new Promise(resolve => setTimeout(resolve, 1500));
       
