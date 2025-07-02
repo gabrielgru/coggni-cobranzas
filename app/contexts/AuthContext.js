@@ -99,7 +99,11 @@ export function AuthProvider({ children }) {
         idiomas_disponibles: companyData.languages || ['es'],
         monedas: companyData.currencies || ['$'],
         paises_telefono: ['UY', 'AR', 'ES'], // Por ahora hardcoded
-        webhook_url: process.env.NEXT_PUBLIC_WEBHOOK_URL || 'https://gabrielgru.app.n8n.cloud/webhook-test/cobranza-multiempresa',
+        webhook_url: process.env.NEXT_PUBLIC_WEBHOOK_URL || 
+          (process.env.NODE_ENV === 'production' 
+            ? 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa'
+            : 'https://gabrielgru.app.n8n.cloud/webhook-test/cobranza-multiempresa'
+          ),
         admin_email: companyData.admin_email || '',
         
         // Mapear field mappings a la estructura esperada
