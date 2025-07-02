@@ -424,54 +424,78 @@ export default function Dashboard() {
   return (
     <div className="app-container">
       <div className="container">
-        {/* Header controls con mejor estructura para mobile */}
-        <div className="header-controls" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          width: '100%'
-        }}>
-          <img 
-            src="/Logo-Coggni.png" 
-            alt="Coggni" 
-            className="header-logo"
-            style={{
-              height: '32px',
-              width: 'auto',
-              marginRight: 'auto'
-            }}
-          />
-          {empresaActual.idiomas_disponibles.length > 1 && <LanguageSelector />}
-          <ThemeToggle />
-        </div>
-        
-        {/* Header de empresa */}
-        <div className="header-section">
-          <div className="company-logo">
+        {/* Header mejorado con diseño profesional */}
+        <div className="app-header">
+          {/* Barra superior con logo y controles */}
+          <div className="top-bar">
             <img 
-              src={`/company-logos/${empresaActual.id}.png`}
-              alt={`${empresaActual.nombre} Logo`} 
-              onError={(e) => {
-                e.target.src = '/company-logos/default.png';
-              }}
-              style={{
-                width: '60px',
-                height: '60px',
-                borderRadius: '12px',
-                objectFit: 'contain',
-                backgroundColor: 'white',
-                padding: '8px'
-              }}
+              src="/Logo-Coggni.png" 
+              alt="Coggni" 
+              className="coggni-logo"
             />
+            <div className="top-controls">
+              {empresaActual.idiomas_disponibles.length > 1 && <LanguageSelector />}
+              <ThemeToggle />
+            </div>
           </div>
-          <h1 className="company-name">{empresaActual.nombre}</h1>
-          <p className="company-info">
-            {usuarioActual} | {empresaActual.paises_telefono.join(', ')} | {empresaActual.monedas.join(', ')}
-          </p>
-
-          <button onClick={logout} className="logout-button">
-            {textos.cerrarSesion}
-          </button>
+          
+          {/* Información de la empresa */}
+          <div className="company-section">
+            <div className="company-header">
+              <div className="company-logo-wrapper">
+                <img 
+                  src={`/company-logos/${empresaActual.id}.png`}
+                  alt={`${empresaActual.nombre} Logo`} 
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                  className="company-logo-img"
+                />
+                <div className="company-logo-fallback" style={{ display: 'none' }}>
+                  <span>{empresaActual.nombre.charAt(0)}</span>
+                </div>
+              </div>
+              
+              <div className="company-details">
+                <h1 className="company-name">{empresaActual.nombre}</h1>
+                <p className="company-info">
+                  <span className="info-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    {usuarioActual}
+                  </span>
+                  <span className="info-separator">•</span>
+                  <span className="info-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    {empresaActual.paises_telefono.join(', ')}
+                  </span>
+                  <span className="info-separator">•</span>
+                  <span className="info-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"/>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                    {empresaActual.monedas.join(' / ')}
+                  </span>
+                </p>
+              </div>
+              
+              <button onClick={logout} className="logout-button-modern">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span className="logout-text">{textos.cerrarSesion}</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <h1 className="main-title">{textos.titulo}</h1>
@@ -766,20 +790,234 @@ export default function Dashboard() {
           </div>
         )}
         <style jsx>{`
+          .app-header {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 24px;
+            overflow: hidden;
+          }
+
+          .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+          }
+
+          .coggni-logo {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+          }
+
+          .top-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+
+          .company-section {
+            padding: 24px;
+          }
+
+          .company-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+          }
+
+          .company-logo-wrapper {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            flex-shrink: 0;
+          }
+
+          .company-logo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 16px;
+            background: white;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          }
+
+          .company-logo-fallback {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: 700;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          }
+
+          .company-details {
+            flex: 1;
+            min-width: 0;
+          }
+
+          .company-name {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+          }
+
+          .company-info {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            flex-wrap: wrap;
+          }
+
+          .info-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+
+          .info-item svg {
+            opacity: 0.6;
+          }
+
+          .info-separator {
+            color: var(--border-color);
+          }
+
+          .logout-button-modern {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            white-space: nowrap;
+          }
+
+          .logout-button-modern:hover {
+            background: var(--bg-hover);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+          }
+
+          .logout-text {
+            display: inline;
+          }
+
+          /* Mobile Responsive */
           @media (max-width: 768px) {
-            .header-logo {
-              height: 28px !important;
+            .app-header {
+              border-radius: 0;
+              margin: -16px -16px 20px -16px;
             }
-            .header-controls {
-              margin-bottom: 16px;
+
+            .top-bar {
+              padding: 12px 16px;
             }
-            .company-logo img {
-              width: 50px !important;
-              height: 50px !important;
+
+            .coggni-logo {
+              height: 32px;
             }
-            .header-section {
+
+            .company-section {
+              padding: 20px 16px;
+            }
+
+            .company-header {
+              flex-direction: column;
               text-align: center;
+              gap: 16px;
             }
+
+            .company-logo-wrapper {
+              width: 72px;
+              height: 72px;
+              margin: 0 auto;
+            }
+
+            .company-name {
+              font-size: 24px;
+            }
+
+            .company-info {
+              justify-content: center;
+              font-size: 13px;
+            }
+
+            .info-separator {
+              display: none;
+            }
+
+            .info-item {
+              padding: 4px 8px;
+              background: var(--bg-secondary);
+              border-radius: 20px;
+            }
+
+            .logout-button-modern {
+              width: 100%;
+              justify-content: center;
+              margin-top: 16px;
+            }
+
+            .logout-text {
+              display: none;
+            }
+
+            .logout-button-modern svg {
+              margin: 0;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .top-controls {
+              gap: 8px;
+            }
+
+            .company-logo-wrapper {
+              width: 64px;
+              height: 64px;
+            }
+
+            .company-name {
+              font-size: 22px;
+            }
+          }
+
+          /* Dark mode adjustments */
+          [data-theme="dark"] .app-header {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          }
+
+          [data-theme="dark"] .company-logo-img {
+            background: var(--bg-secondary);
+          }
+
+          [data-theme="dark"] .logout-button-modern:hover {
+            background: rgba(255, 255, 255, 0.1);
           }
         `}</style>
       </div>
