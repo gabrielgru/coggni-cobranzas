@@ -323,8 +323,6 @@ export default function Dashboard() {
     console.log('🔵 [Dashboard] Verificación inmediata:', verificar ? 'SÍ existe' : 'NO existe');
     console.log('🔵 [Dashboard] Redirigiendo en 1.5 segundos...');
 
-
-
     // Mostrar mensaje de éxito brevemente antes de redirigir
     setStatusMessage({
       show: true,
@@ -338,7 +336,7 @@ export default function Dashboard() {
     setTimeout(() => {
       router.push('/collections/success');
     }, 1500);
-    
+
   } catch (error) {
     // En caso de error, mantener en la misma página
     setStatusMessage({
