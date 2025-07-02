@@ -30,6 +30,15 @@ export default function Dashboard() {
     empresa_campos_contactos: empresaActual?.campos_contactos
   });
 
+  // Debug completo de la configuración
+  console.log('Dashboard - Empresa actual completa:', empresaActual);
+  console.log('Dashboard - Campos contactos:', empresaActual?.campos_contactos);
+  console.log('Dashboard - Email config:', {
+    campo_email: empresaActual?.campos_contactos?.email,
+    nombre: empresaActual?.campos_contactos?.email?.nombre,
+    length: empresaActual?.campos_contactos?.email?.nombre?.length,
+    tipo: typeof empresaActual?.campos_contactos?.email?.nombre
+  });
 
   // Estados principales
   const [selectedFile, setSelectedFile] = useState(null);

@@ -77,6 +77,9 @@ export function AuthProvider({ children }) {
         .select('*')
         .eq('company_id', companyData.id);
       
+      console.log('[AuthContext] Field mappings raw data:', mappings);
+      console.log('[AuthContext] Company ID:', companyData.id);
+      
       if (error) {
         await logError(error, 'FIELD_MAPPINGS_FETCH');
         throw new Error('Failed to load field mappings');
@@ -98,6 +101,10 @@ export function AuthProvider({ children }) {
           }
         });
       }
+      
+      // Después de organizar los mappings
+      console.log('[AuthContext] Organized fieldMappings:', fieldMappings);
+      console.log('[AuthContext] Cliente email mapping:', fieldMappings.cliente.client_email);
       
       // Formatear datos de Supabase al formato esperado por la app
       return {
@@ -179,6 +186,13 @@ export function AuthProvider({ children }) {
           }
         }
       };
+
+      console.log('[AuthContext] Final campos_contactos.email:', {
+        nombre: fieldMappings.cliente.client_email?.column || '',
+        requerido: fieldMappings.cliente.client_email?.required === true,
+        raw_mapping: fieldMappings.cliente.client_email
+      });
+
     } catch (error) {
       await logError(error, 'FORMAT_COMPANY_DATA');
       throw error;
