@@ -29,7 +29,7 @@ export async function GET() {
   
   try {
     const { error } = await supabase
-      .from('message_logs')
+      .from('production_message_logs')
       .insert({
         webhook_call_id: 'test_' + Date.now(),
         company_id: 'dental-link',

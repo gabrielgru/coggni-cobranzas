@@ -36,7 +36,7 @@ export default function LogsPage() {
     setLoading(true);
     
     let query = supabase
-      .from('message_logs')
+      .from('production_message_logs')
       .select('*')
       .order('sent_at', { ascending: false })
       .limit(100);
