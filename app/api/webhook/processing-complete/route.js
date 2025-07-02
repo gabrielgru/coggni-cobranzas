@@ -65,8 +65,21 @@ export async function POST(request) {
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
-    // Preparar datos para insertar
-    console.log('📝 Preparing message logs for insertion...');
+    // NUEVO: Función para detectar el origen
+    const detectEnvironment = (body) => {
+      if (body.webhook_call_id?.startsWith('test_')) return 'test';
+      if (body.webhook_call_id?.startsWith('upload_')) return 'production';
+      return 'unknown';
+    };
+
+    // NUEVO: Función para detectar si es data de prueba
+    const isTestData = (msg, webhookCallId) => {
+      return msg.client_code === 'TEST' || 
+             msg.client_name === 'Test Direct' ||
+             webhookCallId?.startsWith('test_');
+    };
+
+    // MODIFICADO: Agregar metadata a cada mensaje
     const messageLogs = body.messages.map(msg => ({
       webhook_call_id: body.webhook_call_id,
       company_id: body.company_id,
@@ -78,7 +91,11 @@ export async function POST(request) {
       error_message: msg.error_message,
       strategy_used: body.strategy_used || null,
       message_type: msg.message_type || 'recordatorio_vencidas',
-      sent_at: new Date().toISOString()
+      sent_at: new Date().toISOString(),
+      // NUEVO: Campos de metadata
+      environment: detectEnvironment(body),
+      source: body.webhook_call_id?.startsWith('upload_') ? 'n8n' : 'direct_api',
+      is_test: isTestData(msg, body.webhook_call_id)
     }));
 
     console.log(`📊 Inserting ${messageLogs.length} message logs...`);
