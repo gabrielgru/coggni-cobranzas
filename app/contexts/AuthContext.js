@@ -77,8 +77,11 @@ export function AuthProvider({ children }) {
         .select('*')
         .eq('company_id', companyData.id);
       
-      console.log('[AuthContext] Field mappings raw data:', mappings);
-      console.log('[AuthContext] Company ID:', companyData.id);
+      console.log('[AuthContext] Raw mappings for company:', companyData.id, mappings);
+      console.log('[AuthContext] Client email mapping:', 
+        mappings?.find(m => m.internal_field_name === 'client_email')
+      );
+      console.log('[AuthContext] Total mappings loaded:', mappings?.length);
       
       if (error) {
         await logError(error, 'FIELD_MAPPINGS_FETCH');
