@@ -432,7 +432,18 @@ export default function Dashboard() {
         
         {/* Header de empresa */}
         <div className="header-section">
-          <div className="company-logo">🏢</div>
+          <div className="company-logo">
+            <img 
+              src="/Logo-Coggni.png" 
+              alt="Coggni Logo" 
+              style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '12px',
+                objectFit: 'contain'
+              }}
+            />
+          </div>
           <h1 className="company-name">{empresaActual.nombre}</h1>
           <p className="company-info">
             {usuarioActual} | {empresaActual.paises_telefono.join(', ')} | {empresaActual.monedas.join(', ')}
