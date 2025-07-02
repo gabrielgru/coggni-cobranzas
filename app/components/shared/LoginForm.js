@@ -17,7 +17,7 @@ export default function LoginForm({
   const { login, idioma } = useAuth();
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
+    if (e) e.preventDefault();
     
     if (!usuario || !password) {
       setError('Por favor complete todos los campos');
