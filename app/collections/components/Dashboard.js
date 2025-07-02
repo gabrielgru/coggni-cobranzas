@@ -425,7 +425,22 @@ export default function Dashboard() {
     <div className="app-container">
       <div className="container">
         {/* Header controls con mejor estructura para mobile */}
-        <div className="header-controls">
+        <div className="header-controls" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          width: '100%'
+        }}>
+          <img 
+            src="/Logo-Coggni.png" 
+            alt="Coggni" 
+            className="header-logo"
+            style={{
+              height: '32px',
+              width: 'auto',
+              marginRight: 'auto'
+            }}
+          />
           {empresaActual.idiomas_disponibles.length > 1 && <LanguageSelector />}
           <ThemeToggle />
         </div>
@@ -434,13 +449,18 @@ export default function Dashboard() {
         <div className="header-section">
           <div className="company-logo">
             <img 
-              src="/Logo-Coggni.png" 
-              alt="Coggni Logo" 
+              src={`/company-logos/${empresaActual.id}.png`}
+              alt={`${empresaActual.nombre} Logo`} 
+              onError={(e) => {
+                e.target.src = '/company-logos/default.png';
+              }}
               style={{
                 width: '60px',
                 height: '60px',
                 borderRadius: '12px',
-                objectFit: 'contain'
+                objectFit: 'contain',
+                backgroundColor: 'white',
+                padding: '8px'
               }}
             />
           </div>
@@ -727,7 +747,6 @@ export default function Dashboard() {
           <div className={`status-message ${statusMessage.type}`} style={{ display: 'block' }} role="status" aria-live="polite">
             <div className="status-title">{statusMessage.title}</div>
             <div className="status-content" style={{ whiteSpace: 'pre-line' }}>{statusMessage.content}</div>
-            
             {statusMessage.progress && (
               <div className="status-progress" style={{ display: 'flex' }}>
                 <div className={`progress-step ${currentProgressStep === 'validating' ? 'active' : ''} ${['sending', 'completed'].includes(currentProgressStep) ? 'completed' : ''}`}>
@@ -746,6 +765,23 @@ export default function Dashboard() {
             )}
           </div>
         )}
+        <style jsx>{`
+          @media (max-width: 768px) {
+            .header-logo {
+              height: 28px !important;
+            }
+            .header-controls {
+              margin-bottom: 16px;
+            }
+            .company-logo img {
+              width: 50px !important;
+              height: 50px !important;
+            }
+            .header-section {
+              text-align: center;
+            }
+          }
+        `}</style>
       </div>
     </div>
   );
