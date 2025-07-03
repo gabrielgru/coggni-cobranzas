@@ -4,6 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { cleanupCookies, invalidateSessionCache, setCookie as setCookieUtil } from '../utils/cookieManager';
 
 const AuthContext = createContext(null);
 
@@ -101,9 +102,13 @@ export function AuthProvider({ children }) {
       async (event, session) => {
         console.log('[AuthContext] Auth state changed:', event);
         if (event === 'SIGNED_IN' && session?.user) {
+          setCookie('coggni-last-activity', Date.now().toString());
           await loadUserData(session.user);
         } else if (event === 'SIGNED_OUT') {
+          cleanupCookies();
           handleSignOut();
+        } else if (event === 'TOKEN_REFRESHED') {
+          invalidateSessionCache();
         }
       }
     );
@@ -226,11 +231,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Helper para setear cookies
-  const setCookie = (name, value, days = 7) => {
-    const expires = new Date();
-    expires.setDate(expires.getDate() + days);
-    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+  // Reemplazar la función setCookie para usar la utilidad
+  const setCookie = (name, value, options = {}) => {
+    setCookieUtil(name, value, options);
   };
 
   const login = async (email, password) => {
@@ -272,7 +275,7 @@ export function AuthProvider({ children }) {
       setCookie('coggni-user', authData.user.email);
       setCookie('coggni-user-type', 'client');
       setCookie('coggni-last-activity', Date.now().toString());
-      // Esperar a que las cookies se propaguen
+      setCookie('coggni-company-id', authData.user.user_metadata?.company_id || '');
       await new Promise(resolve => setTimeout(resolve, 50));
 
       return { success: true };
@@ -344,10 +347,15 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
+      invalidateSessionCache();
+      cleanupCookies();
       await supabase.auth.signOut();
       handleSignOut();
+      console.log('[AuthContext] Logout completed successfully');
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('[AuthContext] Error during logout:', error);
+      cleanupCookies();
+      handleSignOut();
     }
   };
 
@@ -382,6 +390,33 @@ export function AuthProvider({ children }) {
     setLastActivity(Date.now());
   };
 
+  // Logout remoto cross-device
+  useEffect(() => {
+    if (!usuarioActual) return;
+    const channel = supabase
+      .channel(`user-sessions-${usuarioActual}`)
+      .on('broadcast', { event: 'logout' }, (payload) => {
+        console.log('[AuthContext] Remote logout detected:', payload);
+        invalidateSessionCache();
+        logout();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [usuarioActual]);
+
+  const logoutAllDevices = async () => {
+    if (!usuarioActual) return;
+    const channel = supabase.channel(`user-sessions-${usuarioActual}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'logout',
+      payload: { timestamp: Date.now() }
+    });
+    await logout();
+  };
+
   const value = {
     usuarioActual,
     empresaActual,
@@ -395,7 +430,9 @@ export function AuthProvider({ children }) {
     logout,
     changeIdioma,
     updateActivity,
-    resetPassword
+    resetPassword,
+    logoutAllDevices,
+    invalidateSessionCache,
   };
 
   return (
