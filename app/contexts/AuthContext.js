@@ -268,8 +268,25 @@ export function AuthProvider({ children }) {
         throw authError;
       }
       
-      console.log('[AuthContext] Login successful, waiting for auth state change');
-      return { success: true };
+      // ✅ ESPERAR a que se complete la carga de datos
+      console.log('[AuthContext] Login successful, waiting for data load...');
+      
+      // Esperar hasta que los datos estén cargados o timeout
+      let attempts = 0;
+      const maxAttempts = 30; // 3 segundos máximo (30 * 100ms)
+      
+      while (attempts < maxAttempts) {
+        if (usuarioActual && empresaActual) {
+          console.log('[AuthContext] Data loaded successfully');
+          return { success: true };
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      console.warn('[AuthContext] Timeout waiting for data load, but login was successful');
+      return { success: true }; // Fallback - el login fue exitoso aunque no se cargaron los datos inmediatamente
       
     } catch (error) {
       console.error('[AuthContext] Login error:', error);

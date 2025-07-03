@@ -47,8 +47,8 @@ function LoginPageContent() {
       setHasRedirected(true);
       router.refresh();
       setTimeout(() => {
-        window.location.href = '/collections';
-      }, 100);
+        router.push('/collections');
+      }, 500);
     }
   }, [usuarioActual, empresaActual, authLoading, router, hasRedirected]);
 
