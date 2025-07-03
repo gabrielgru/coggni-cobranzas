@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { createClient } from '../../../utils/supabase/client';
 import { useRouter } from 'next/navigation';
+
+const supabase = createClient();
 
 export default function NewCompanyPage() {
   const router = useRouter();

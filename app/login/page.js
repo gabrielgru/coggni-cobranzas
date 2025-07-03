@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import LoginForm from '../components/shared/LoginForm';
 
-export default function LoginPage() {
+// Componente interno que usa useSearchParams
+function LoginPageContent() {
   const { usuarioActual, empresaActual, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -120,5 +121,21 @@ export default function LoginPage() {
       )}
       <LoginForm onLogin={handleLogin} />
     </div>
+  );
+}
+
+// Componente principal con Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="login-container">
+        <div style={{ textAlign: 'center' }}>
+          <div className="spinner" style={{ display: 'inline-block' }}></div>
+          <p style={{ marginTop: '16px' }}>Cargando...</p>
+        </div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }

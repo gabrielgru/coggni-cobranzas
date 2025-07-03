@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
+
+const supabase = createClient();
 
 export default function ProcessingLogsPage() {
   const [logs, setLogs] = useState([]);

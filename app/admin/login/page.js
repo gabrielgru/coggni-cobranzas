@@ -2,7 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '../../lib/supabase';
+import { createClient } from '../../utils/supabase/client';
+const supabase = createClient();
 
 // Componente interno que usa searchParams
 function AdminLoginContent() {

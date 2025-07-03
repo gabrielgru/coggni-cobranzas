@@ -1,5 +1,6 @@
 // app/api/companies/[id]/config/route.js
-import { supabase } from '../../../../lib/supabase';
+import { createClient } from '../../../../utils/supabase/server';
+const supabase = createClient();
 
 // Cache simple en memoria (por ahora)
 const configCache = new Map();
