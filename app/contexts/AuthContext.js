@@ -1,4 +1,4 @@
-// app/contexts/AuthContext.js - Versión con Field Mappings funcionando
+// app/contexts/AuthContext.js - Versión simplificada sin multiempresa
 
 'use client';
 
@@ -9,22 +9,15 @@ import { cleanupCookies, invalidateSessionCache, setCookie as setCookieUtil } fr
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  // CAMBIO: No uses useState para el cliente
-  // const [supabase] = useState(() => createClient());
-  // En su lugar, crea una función que siempre devuelva un cliente fresco
   const getSupabase = () => createClient();
 
   const [usuarioActual, setUsuarioActual] = useState(null);
   const [empresaActual, setEmpresaActual] = useState(null);
   const [idioma, setIdioma] = useState('es');
   const [loading, setLoading] = useState(true);
-  const [isLoadingEmpresa, setIsLoadingEmpresa] = useState(false);
   const [error, setError] = useState(null);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [userType, setUserType] = useState(null);
-  // NUEVOS ESTADOS PARA MULTI-EMPRESA
-  const [empresasDisponibles, setEmpresasDisponibles] = useState([]);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Función helper para formatear datos de empresa
   const formatCompanyData = (companyData, mappings) => {
@@ -71,7 +64,6 @@ export function AuthProvider({ children }) {
       }
     });
 
-    // Copias nuevas para evitar problemas de referencia
     const campos_facturas_copy = { ...campos_facturas };
     const campos_contactos_copy = { ...campos_contactos };
 
@@ -101,73 +93,31 @@ export function AuthProvider({ children }) {
     return formattedData;
   };
 
-  const loadUserData = async (authUser) => {
-    try {
-      console.log('[AuthContext] loadUserData started for:', authUser.email);
-      setIsLoadingEmpresa(true);
-      const supabaseClient = getSupabase();
-      // 1. Cargar datos del usuario
-      const { data: userData, error: userError } = await supabaseClient
-        .from('company_users')
-        .select('*, companies(*)')
-        .eq('auth_id', authUser.id)
-        .single();
-      if (userError) {
-        console.error('[AuthContext] Error loading user:', userError);
-        throw userError;
-      }
-      console.log('[AuthContext] User data loaded:', userData);
-      // Verificar si es super admin
-      if (userData.is_super_admin) {
-        console.log('[AuthContext] User is super admin, loading all companies');
-        setIsSuperAdmin(true);
-        // Cargar TODAS las empresas activas
-        const { data: allCompanies, error: companiesError } = await supabaseClient
-          .from('companies')
-          .select('*')
-          .eq('is_active', true)
-          .order('name');
-        if (!companiesError && allCompanies) {
-          setEmpresasDisponibles(allCompanies);
-          // Si hay empresa guardada en localStorage, usarla
-          const savedEmpresaId = localStorage.getItem('selectedEmpresaId');
-          const empresaSeleccionada = savedEmpresaId 
-            ? allCompanies.find(c => c.id === savedEmpresaId) || allCompanies[0]
-            : allCompanies[0];
-          await cargarDatosEmpresa(empresaSeleccionada, supabaseClient);
-        }
-      } else {
-        // Usuario normal - una sola empresa
-        setEmpresasDisponibles([userData.companies]);
-        await cargarDatosEmpresa(userData.companies, supabaseClient);
-      }
-      setUsuarioActual(authUser.email);
-      setUserType('client');
-      setError(null);
-    } catch (error) {
-      console.error('[AuthContext] loadUserData error:', error);
-      setError(error.message || 'Error cargando usuario');
-    } finally {
-      setIsLoadingEmpresa(false);
-    }
-  };
-
-  // Nueva función para cargar datos específicos de una empresa
-  const cargarDatosEmpresa = async (empresa, supabaseClient) => {
+  // Cargar datos específicos de la empresa
+  const cargarDatosEmpresa = async (empresa) => {
     console.log('[AuthContext] Loading data for empresa:', empresa.name);
+    
+    const supabaseClient = getSupabase();
+    
     // Cargar field mappings
     const { data: mappings, error: mappingError } = await supabaseClient
       .from('field_mappings')
       .select('*')
       .eq('company_id', empresa.id)
       .order('field_order', { ascending: true });
+
+    console.log('[AuthContext] Query params:', { company_id: empresa.id });
+    console.log('[AuthContext] Mappings response:', { mappings, error: mappingError });
+    
     if (mappingError) {
       console.error('[AuthContext] Error loading field mappings:', mappingError);
     }
+    
     console.log('[AuthContext] Field mappings loaded:', {
       count: mappings?.length || 0,
       mappings: mappings
     });
+    
     // Formatear datos de la empresa
     let formattedCompany;
     if (mappings && mappings.length > 0) {
@@ -194,86 +144,133 @@ export function AuthProvider({ children }) {
         }
       };
     }
+    
     setEmpresaActual(formattedCompany);
     setIdioma(empresa.languages?.[0] || 'es');
   };
 
-  // Nueva función para cambiar de empresa (solo para super admins)
-  const cambiarEmpresa = async (empresaId) => {
-    if (!isSuperAdmin) return;
-    const empresa = empresasDisponibles.find(e => e.id === empresaId);
-    if (empresa) {
-      setIsLoadingEmpresa(true);
-      try {
-        const supabaseClient = getSupabase();
-        await cargarDatosEmpresa(empresa, supabaseClient);
-        // Guardar selección en localStorage
-        localStorage.setItem('selectedEmpresaId', empresaId);
-        console.log('[AuthContext] Changed to empresa:', empresa.name);
-      } catch (error) {
-        console.error('[AuthContext] Error changing empresa:', error);
-        setError(error.message || 'Error cambiando empresa');
-      } finally {
-        setIsLoadingEmpresa(false);
+  const loadUserData = async (authUser) => {
+    try {
+      console.log('[AuthContext] loadUserData started for:', authUser.email);
+      
+      const supabaseClient = getSupabase();
+      
+      // Cargar datos del usuario con su empresa
+      const { data: userData, error: userError } = await supabaseClient
+        .from('company_users')
+        .select('*, companies(*)')
+        .eq('auth_id', authUser.id)
+        .single();
+        
+      if (userError) {
+        console.error('[AuthContext] Error loading user:', userError);
+        setError(userError.message || 'Error cargando usuario');
+        return;
       }
+      
+      if (!userData || !userData.companies) {
+        console.error('[AuthContext] No userData or company found');
+        setError('No se encontró el usuario o empresa');
+        return;
+      }
+      
+      console.log('[AuthContext] User data loaded:', userData);
+      
+      // Cargar datos de la empresa del usuario
+      await cargarDatosEmpresa(userData.companies);
+      
+      setUsuarioActual(authUser.email);
+      setUserType('client');
+      setError(null);
+      
+    } catch (error) {
+      console.error('[AuthContext] loadUserData error:', error);
+      setError(error.message || 'Error cargando usuario');
     }
   };
 
   useEffect(() => {
-    const supabase = getSupabase();
-    checkAuthSession();
-    // Suscribirse a cambios de auth
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('[AuthContext] Auth state changed:', event);
-        if (event === 'SIGNED_IN' && session?.user) {
-          // Esperar un tick antes de cargar datos
-          await new Promise(resolve => setTimeout(resolve, 100));
-          await loadUserData(session.user);
-        } else if (event === 'SIGNED_OUT') {
-          handleSignOut();
+    let mounted = true;
+    
+    const initAuth = async () => {
+      const supabase = getSupabase();
+      
+      try {
+        // Suscribirse a cambios de auth
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log('[AuthContext] Auth state changed:', event, session?.user?.email);
+            
+            if (!mounted) return;
+            
+            if (event === 'SIGNED_IN' && session?.user) {
+              // Usuario se loguea
+              console.log('[AuthContext] User signed in, loading data...');
+              await loadUserData(session.user);
+              setLoading(false);
+            } else if (event === 'SIGNED_OUT') {
+              // Usuario hace logout
+              handleSignOut();
+            } else if (event === 'INITIAL_SESSION') {
+              // Verificar sesión inicial
+              if (session?.user) {
+                console.log('[AuthContext] Initial session found, loading data...');
+                await loadUserData(session.user);
+              } else {
+                console.log('[AuthContext] No initial session');
+              }
+              setLoading(false);
+            }
+          }
+        );
+        
+        // Verificar sesión actual
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('[AuthContext] Error getting session:', error);
+          setLoading(false);
+        } else if (!session) {
+          console.log('[AuthContext] No active session');
+          setLoading(false);
+        }
+        // Si hay sesión, esperar a que onAuthStateChange la maneje
+        
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('[AuthContext] Error in initAuth:', error);
+        if (mounted) {
+          setLoading(false);
         }
       }
-    );
+    };
+    
+    initAuth();
+    
     return () => {
-      authListener.subscription.unsubscribe();
+      mounted = false;
     };
   }, []);
-
-  const checkAuthSession = async () => {
-    try {
-      const supabase = getSupabase();
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) {
-        console.log('[AuthContext] No valid user session');
-        handleSignOut();
-        return;
-      }
-      console.log('[AuthContext] Valid user:', user.email);
-      await loadUserData(user);
-    } catch (error) {
-      console.error('[AuthContext] Session check error:', error);
-      handleSignOut();
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const login = async (email, password) => {
     console.log('[AuthContext] Attempting login with Supabase Auth');
     try {
       const supabase = getSupabase();
-      // 1. Intentar login con Supabase Auth
+      
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
+      
       if (authError) {
         throw authError;
       }
-      // 2. Login exitoso - los datos se cargarán via onAuthStateChange
+      
       console.log('[AuthContext] Login successful, waiting for auth state change');
       return { success: true };
+      
     } catch (error) {
       console.error('[AuthContext] Login error:', error);
       return {
@@ -281,11 +278,6 @@ export function AuthProvider({ children }) {
         error: error.message || 'Usuario o contraseña incorrectos'
       };
     }
-  };
-
-  // Reemplazar la función setCookie para usar la utilidad
-  const setCookie = (name, value, options = {}) => {
-    setCookieUtil(name, value, options);
   };
 
   const logout = async () => {
@@ -308,6 +300,7 @@ export function AuthProvider({ children }) {
     setEmpresaActual(null);
     setUserType(null);
     setError(null);
+    setLoading(false);
   };
 
   const resetPassword = async (email) => {
@@ -338,6 +331,7 @@ export function AuthProvider({ children }) {
   // Logout remoto cross-device
   useEffect(() => {
     if (!usuarioActual) return;
+    
     const supabase = getSupabase();
     const channel = supabase
       .channel(`user-sessions-${usuarioActual}`)
@@ -347,6 +341,7 @@ export function AuthProvider({ children }) {
         logout();
       })
       .subscribe();
+      
     return () => {
       supabase.removeChannel(channel);
     };
@@ -354,13 +349,16 @@ export function AuthProvider({ children }) {
 
   const logoutAllDevices = async () => {
     if (!usuarioActual) return;
+    
     const supabase = getSupabase();
     const channel = supabase.channel(`user-sessions-${usuarioActual}`);
+    
     await channel.send({
       type: 'broadcast',
       event: 'logout',
       payload: { timestamp: Date.now() }
     });
+    
     await logout();
   };
 
@@ -369,7 +367,6 @@ export function AuthProvider({ children }) {
     empresaActual,
     idioma,
     loading,
-    isLoadingEmpresa,
     error,
     userType,
     lastActivity,
@@ -380,9 +377,6 @@ export function AuthProvider({ children }) {
     resetPassword,
     logoutAllDevices,
     invalidateSessionCache,
-    empresasDisponibles,
-    isSuperAdmin,
-    cambiarEmpresa,
   };
 
   return (

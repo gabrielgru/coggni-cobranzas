@@ -9,7 +9,6 @@ import FileUploadZone from './FileUploadZone';
 import OptionalSection from './OptionalSection';
 import { useRouter } from 'next/navigation';
 import { supabase, supabaseAdmin } from '../../lib/supabase';
-import EmpresaSelector from '../../components/shared/EmpresaSelector';
 
 // Utilidad para buscar por tipo de campo
 const hasFieldOfType = (campos, tipo) => {
@@ -536,9 +535,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
-        {/* Selector de Empresa para superadmins o multi-empresa */}
-        <EmpresaSelector />
 
         <h1 className="main-title">{textos.titulo}</h1>
 
