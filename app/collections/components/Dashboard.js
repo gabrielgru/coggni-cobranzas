@@ -10,6 +10,11 @@ import OptionalSection from './OptionalSection';
 import { useRouter } from 'next/navigation';
 import { supabase, supabaseAdmin } from '../../lib/supabase';
 
+// Utilidad para buscar por tipo de campo
+const hasFieldOfType = (campos, tipo) => {
+  return Object.values(campos || {}).some(campo => campo.tipo === tipo);
+};
+
 export default function Dashboard() {
   const { usuarioActual, empresaActual, idioma, logout, changeIdioma } = useAuth();
   const router = useRouter();
@@ -48,7 +53,7 @@ export default function Dashboard() {
   const [contactsValidationResult, setContactsValidationResult] = useState(null);
   // Si la empresa no tiene email, usar solo_whatsapp por defecto
   const [strategy, setStrategy] = useState(
-    empresaActual?.campos_contactos.email?.nombre ? 'whatsapp_primero' : 'solo_whatsapp'
+    hasFieldOfType(empresaActual?.campos_contactos, 'email') ? 'whatsapp_primero' : 'solo_whatsapp'
   );
   const [includeUpcoming, setIncludeUpcoming] = useState(false);
   const [daysInput, setDaysInput] = useState(7);
@@ -437,7 +442,7 @@ export default function Dashboard() {
     setSelectedContactsFile(null);
     setFileValidationResult(null);
     setContactsValidationResult(null);
-    setStrategy(empresaActual?.campos_contactos.email?.nombre ? 'whatsapp_primero' : 'solo_whatsapp');
+    setStrategy(hasFieldOfType(empresaActual?.campos_contactos, 'email') ? 'whatsapp_primero' : 'solo_whatsapp');
     setIncludeUpcoming(false);
     setUpdateContacts(false);
     setDaysInput(7);
@@ -575,7 +580,7 @@ export default function Dashboard() {
         </div>
 
         {/* Estrategia de Envío - Solo mostrar si la empresa tiene email disponible */}
-        {empresaActual.campos_contactos.email?.nombre && (
+        {hasFieldOfType(empresaActual.campos_contactos, 'email') && (
           <div className="section">
             <h2>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -753,7 +758,7 @@ export default function Dashboard() {
                   <span><strong>{textos.archivo}:</strong> {selectedFile.name}</span>
                 </div>
                 {/* Solo mostrar estrategia si la empresa tiene email */}
-                {empresaActual?.campos_contactos.email?.nombre && (
+                {hasFieldOfType(empresaActual.campos_contactos, 'email') && (
                   <div className="summary-item">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="validation-icon">
                       <path d="M9 11l3 3L22 4"/>
