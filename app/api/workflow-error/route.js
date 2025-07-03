@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../lib/supabase';
+import { createServiceRoleClient } from '../../utils/supabase/service-role';
 
 export async function POST(request) {
   try {
+    const supabaseAdmin = createServiceRoleClient();
     const errorData = await request.json();
     
     console.log('=== WORKFLOW ERROR RECEIVED ===');

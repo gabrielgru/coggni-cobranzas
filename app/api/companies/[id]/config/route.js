@@ -1,6 +1,5 @@
 // app/api/companies/[id]/config/route.js
 import { createClient } from '../../../../utils/supabase/server';
-const supabase = createClient();
 
 // Cache simple en memoria (por ahora)
 const configCache = new Map();
@@ -8,6 +7,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 export async function GET(request, { params }) {
   const companyId = params.id;
+  const supabase = createClient();
   
   // Headers CORS para que n8n pueda acceder
   const headers = {

@@ -8,7 +8,7 @@ import LanguageSelector from '../../components/shared/LanguageSelector';
 import FileUploadZone from './FileUploadZone';
 import OptionalSection from './OptionalSection';
 import { useRouter } from 'next/navigation';
-import { supabase, supabaseAdmin } from '../../lib/supabase';
+import { createServiceRoleClient } from '../../utils/supabase/service-role';
 
 // Utilidad para buscar por tipo de campo
 const hasFieldOfType = (campos, tipo) => {
