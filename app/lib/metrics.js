@@ -141,8 +141,8 @@ class MiddlewareMetrics {
 // Singleton para usar en el middleware
 export const metrics = new MiddlewareMetrics();
 
-// Flush final en caso de shutdown
-if (typeof process !== 'undefined') {
+// Flush final en caso de shutdown (solo en Node.js, no en Edge Runtime)
+if (typeof process !== 'undefined' && typeof process.on === 'function') {
   process.on('SIGTERM', () => {
     metrics.destroy();
   });

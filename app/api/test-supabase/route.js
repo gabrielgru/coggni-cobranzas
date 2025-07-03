@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../lib/supabase';
+import { createClient } from '../../utils/supabase/server';
 
 export async function GET() {
   console.log('Test Supabase endpoint');
+  
+  // Inicializar el cliente SSR
+  const supabase = await createClient();
   
   // Test 1: Verificar que supabase existe
   const supabaseExists = !!supabase;

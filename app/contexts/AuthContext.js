@@ -3,12 +3,17 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { createClient } from '../utils/supabase/client';
 import { cleanupCookies, invalidateSessionCache, setCookie as setCookieUtil } from '../utils/cookieManager';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  // CAMBIO: No uses useState para el cliente
+  // const [supabase] = useState(() => createClient());
+  // En su lugar, crea una función que siempre devuelva un cliente fresco
+  const getSupabase = () => createClient();
+
   const [usuarioActual, setUsuarioActual] = useState(null);
   const [empresaActual, setEmpresaActual] = useState(null);
   const [idioma, setIdioma] = useState('es');
@@ -17,6 +22,9 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [userType, setUserType] = useState(null);
+  // NUEVOS ESTADOS PARA MULTI-EMPRESA
+  const [empresasDisponibles, setEmpresasDisponibles] = useState([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Función helper para formatear datos de empresa
   const formatCompanyData = (companyData, mappings) => {
@@ -93,26 +101,140 @@ export function AuthProvider({ children }) {
     return formattedData;
   };
 
-  // Verificar sesión de Supabase Auth al cargar
+  const loadUserData = async (authUser) => {
+    try {
+      console.log('[AuthContext] loadUserData started for:', authUser.email);
+      setIsLoadingEmpresa(true);
+      const supabaseClient = getSupabase();
+      // 1. Cargar datos del usuario
+      const { data: userData, error: userError } = await supabaseClient
+        .from('company_users')
+        .select('*, companies(*)')
+        .eq('auth_id', authUser.id)
+        .single();
+      if (userError) {
+        console.error('[AuthContext] Error loading user:', userError);
+        throw userError;
+      }
+      console.log('[AuthContext] User data loaded:', userData);
+      // Verificar si es super admin
+      if (userData.is_super_admin) {
+        console.log('[AuthContext] User is super admin, loading all companies');
+        setIsSuperAdmin(true);
+        // Cargar TODAS las empresas activas
+        const { data: allCompanies, error: companiesError } = await supabaseClient
+          .from('companies')
+          .select('*')
+          .eq('is_active', true)
+          .order('name');
+        if (!companiesError && allCompanies) {
+          setEmpresasDisponibles(allCompanies);
+          // Si hay empresa guardada en localStorage, usarla
+          const savedEmpresaId = localStorage.getItem('selectedEmpresaId');
+          const empresaSeleccionada = savedEmpresaId 
+            ? allCompanies.find(c => c.id === savedEmpresaId) || allCompanies[0]
+            : allCompanies[0];
+          await cargarDatosEmpresa(empresaSeleccionada, supabaseClient);
+        }
+      } else {
+        // Usuario normal - una sola empresa
+        setEmpresasDisponibles([userData.companies]);
+        await cargarDatosEmpresa(userData.companies, supabaseClient);
+      }
+      setUsuarioActual(authUser.email);
+      setUserType('client');
+      setError(null);
+    } catch (error) {
+      console.error('[AuthContext] loadUserData error:', error);
+      setError(error.message || 'Error cargando usuario');
+    } finally {
+      setIsLoadingEmpresa(false);
+    }
+  };
+
+  // Nueva función para cargar datos específicos de una empresa
+  const cargarDatosEmpresa = async (empresa, supabaseClient) => {
+    console.log('[AuthContext] Loading data for empresa:', empresa.name);
+    // Cargar field mappings
+    const { data: mappings, error: mappingError } = await supabaseClient
+      .from('field_mappings')
+      .select('*')
+      .eq('company_id', empresa.id)
+      .order('field_order', { ascending: true });
+    if (mappingError) {
+      console.error('[AuthContext] Error loading field mappings:', mappingError);
+    }
+    console.log('[AuthContext] Field mappings loaded:', {
+      count: mappings?.length || 0,
+      mappings: mappings
+    });
+    // Formatear datos de la empresa
+    let formattedCompany;
+    if (mappings && mappings.length > 0) {
+      formattedCompany = formatCompanyData(empresa, mappings);
+    } else {
+      console.warn('[AuthContext] No field mappings found, using fallback structure');
+      formattedCompany = {
+        id: empresa.id,
+        nombre: empresa.name,
+        monedas: empresa.currencies || ['$'],
+        idiomas_disponibles: empresa.languages || ['es'],
+        paises_telefono: empresa.phone_countries || ['UY', 'AR', 'ES'],
+        admin_email: empresa.admin_email,
+        webhook_url: empresa.webhook_url || 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
+        campos_facturas: {
+          invoice_number: { nombre: 'Número', requerido: true, tipo: 'text' },
+          invoice_amount: { nombre: 'Monto', requerido: true, tipo: 'number' },
+          due_date: { nombre: 'Vencimiento', requerido: false, tipo: 'date' }
+        },
+        campos_contactos: {
+          client_email: { nombre: 'Email', requerido: true, tipo: 'email' },
+          client_name: { nombre: 'Nombre', requerido: true, tipo: 'text' },
+          client_phone: { nombre: 'Teléfono', requerido: false, tipo: 'phone' }
+        }
+      };
+    }
+    setEmpresaActual(formattedCompany);
+    setIdioma(empresa.languages?.[0] || 'es');
+  };
+
+  // Nueva función para cambiar de empresa (solo para super admins)
+  const cambiarEmpresa = async (empresaId) => {
+    if (!isSuperAdmin) return;
+    const empresa = empresasDisponibles.find(e => e.id === empresaId);
+    if (empresa) {
+      setIsLoadingEmpresa(true);
+      try {
+        const supabaseClient = getSupabase();
+        await cargarDatosEmpresa(empresa, supabaseClient);
+        // Guardar selección en localStorage
+        localStorage.setItem('selectedEmpresaId', empresaId);
+        console.log('[AuthContext] Changed to empresa:', empresa.name);
+      } catch (error) {
+        console.error('[AuthContext] Error changing empresa:', error);
+        setError(error.message || 'Error cambiando empresa');
+      } finally {
+        setIsLoadingEmpresa(false);
+      }
+    }
+  };
+
   useEffect(() => {
+    const supabase = getSupabase();
     checkAuthSession();
-    
     // Suscribirse a cambios de auth
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('[AuthContext] Auth state changed:', event);
         if (event === 'SIGNED_IN' && session?.user) {
-          setCookie('coggni-last-activity', Date.now().toString());
+          // Esperar un tick antes de cargar datos
+          await new Promise(resolve => setTimeout(resolve, 100));
           await loadUserData(session.user);
         } else if (event === 'SIGNED_OUT') {
-          cleanupCookies();
           handleSignOut();
-        } else if (event === 'TOKEN_REFRESHED') {
-          invalidateSessionCache();
         }
       }
     );
-
     return () => {
       authListener.subscription.unsubscribe();
     };
@@ -120,114 +242,44 @@ export function AuthProvider({ children }) {
 
   const checkAuthSession = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('[AuthContext] Current session:', session?.user?.email);
-      
-      if (session?.user) {
-        await loadUserData(session.user);
+      const supabase = getSupabase();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        console.log('[AuthContext] No valid user session');
+        handleSignOut();
+        return;
       }
+      console.log('[AuthContext] Valid user:', user.email);
+      await loadUserData(user);
     } catch (error) {
-      console.error('[AuthContext] Error checking auth session:', error);
+      console.error('[AuthContext] Session check error:', error);
+      handleSignOut();
     } finally {
       setLoading(false);
     }
   };
 
-  const loadUserData = async (authUser) => {
+  const login = async (email, password) => {
+    console.log('[AuthContext] Attempting login with Supabase Auth');
     try {
-      console.log('[AuthContext] loadUserData started for:', authUser.email);
-      setIsLoadingEmpresa(true);
-      
-      // 1. Cargar datos del usuario y empresa
-      const { data: userData, error: userError } = await supabase
-        .from('company_users')
-        .select('*, companies(*)')
-        .eq('auth_id', authUser.id)
-        .single();
-
-      if (userError) {
-        console.error('[AuthContext] Error loading user:', userError);
-        throw userError;
-      }
-      
-      if (!userData) {
-        throw new Error('Usuario no encontrado');
-      }
-
-      console.log('[AuthContext] User data loaded:', userData.email, userData.company_id);
-
-      // 2. Cargar field mappings con query mejorada
-      const company_id = userData.companies.id;
-      console.log('[AuthContext] Loading field mappings for company:', company_id);
-
-      // Primero verificar si tenemos una sesión válida
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error('[AuthContext] No active session when loading field mappings');
-        throw new Error('No active session');
-      }
-
-      // Query mejorada con más logging
-      const { data: mappings, error: mappingError } = await supabase
-        .from('field_mappings')
-        .select('*')
-        .eq('company_id', company_id)
-        .order('field_order', { ascending: true });
-
-      if (mappingError) {
-        console.error('[AuthContext] Error loading field mappings:', mappingError);
-        // No lanzar error aquí, intentar continuar con datos básicos
-      }
-
-      console.log('[AuthContext] Field mappings loaded:', {
-        count: mappings?.length || 0,
-        mappings: mappings
+      const supabase = getSupabase();
+      // 1. Intentar login con Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
-
-      // 3. Formatear datos de la empresa
-      let formattedCompany;
-      
-      if (mappings && mappings.length > 0) {
-        formattedCompany = formatCompanyData(userData.companies, mappings);
-      } else {
-        // Fallback con estructura mínima para que funcione
-        console.warn('[AuthContext] No field mappings found, using fallback structure');
-        formattedCompany = {
-          id: userData.companies.id,
-          nombre: userData.companies.name,
-          monedas: userData.companies.currencies || ['$'],
-          idiomas_disponibles: userData.companies.languages || ['es'],
-          paises_telefono: userData.companies.phone_countries || ['UY', 'AR', 'ES'],
-          admin_email: userData.companies.admin_email,
-          webhook_url: userData.companies.webhook_url || 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
-          campos_facturas: {
-            invoice_number: { nombre: 'Número', requerido: true, tipo: 'text' },
-            invoice_amount: { nombre: 'Monto', requerido: true, tipo: 'number' },
-            due_date: { nombre: 'Vencimiento', requerido: false, tipo: 'date' }
-          },
-          campos_contactos: {
-            client_email: { nombre: 'Email', requerido: true, tipo: 'email' },
-            client_name: { nombre: 'Nombre', requerido: true, tipo: 'text' },
-            client_phone: { nombre: 'Teléfono', requerido: false, tipo: 'phone' }
-          }
-        };
+      if (authError) {
+        throw authError;
       }
-
-      // 4. Establecer estado
-      setUsuarioActual(authUser.email);
-      setEmpresaActual(formattedCompany);
-      setIdioma(userData.companies.languages?.[0] || 'es');
-      setUserType('client');
-      setError(null);
-      
-      console.log('[AuthContext] User data loaded successfully');
-      
+      // 2. Login exitoso - los datos se cargarán via onAuthStateChange
+      console.log('[AuthContext] Login successful, waiting for auth state change');
+      return { success: true };
     } catch (error) {
-      console.error('[AuthContext] Error loading user data:', error);
-      setError('Error al cargar datos del usuario');
-      handleSignOut();
-    } finally {
-      setIsLoadingEmpresa(false);
+      console.error('[AuthContext] Login error:', error);
+      return {
+        success: false,
+        error: error.message || 'Usuario o contraseña incorrectos'
+      };
     }
   };
 
@@ -236,119 +288,11 @@ export function AuthProvider({ children }) {
     setCookieUtil(name, value, options);
   };
 
-  const login = async (email, password) => {
-    console.log('[AuthContext] Attempting login with Supabase Auth');
-    
-    try {
-      // 1. Intentar login con Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (authError) {
-        // Si falla, verificar si es un usuario no migrado
-        if (authError.message.includes('Invalid login credentials')) {
-          return await loginLegacy(email, password);
-        }
-        throw authError;
-      }
-
-      // 2. Login exitoso - los datos se cargarán via onAuthStateChange
-      console.log('[AuthContext] Login successful, waiting for auth state change');
-
-      // 3. Log de auditoría (sin await para no bloquear)
-      supabase.from('auth_audit_logs').insert({
-        user_email: email,
-        company_id: authData.user.user_metadata?.company_id,
-        action: 'login',
-        success: true,
-        ip_address: window.location.hostname,
-        user_agent: navigator.userAgent
-      }).then(() => {
-        console.log('[AuthContext] Audit log created');
-      }).catch(error => {
-        console.error('[AuthContext] Error creating audit log:', error);
-      });
-
-      // CRÍTICO: Setear cookies inmediatamente después del login exitoso
-      setCookie('coggni-user', authData.user.email);
-      setCookie('coggni-user-type', 'client');
-      setCookie('coggni-last-activity', Date.now().toString());
-      setCookie('coggni-company-id', authData.user.user_metadata?.company_id || '');
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      return { success: true };
-      
-    } catch (error) {
-      console.error('[AuthContext] Login error:', error);
-      
-      // Log intento fallido
-      supabase.from('auth_audit_logs').insert({
-        user_email: email,
-        action: 'login',
-        success: false,
-        error_message: error.message,
-        ip_address: window.location.hostname,
-        user_agent: navigator.userAgent
-      }).catch(console.error);
-
-      return { 
-        success: false, 
-        error: error.message || 'Usuario o contraseña incorrectos' 
-      };
-    }
-  };
-
-  // Login temporal para usuarios no migrados
-  const loginLegacy = async (email, password) => {
-    console.log('[AuthContext] Attempting legacy login for unmigrated user');
-    
-    try {
-      // 1. Verificar en company_users
-      const { data: userData, error: userError } = await supabase
-        .from('company_users')
-        .select('*, companies(*)')
-        .eq('email', email)
-        .single();
-
-      if (userError || !userData) {
-        return { success: false, error: 'Usuario no encontrado' };
-      }
-
-      // 2. Verificar password (temporal - solo para no migrados)
-      if (userData.password !== password) {
-        return { success: false, error: 'Contraseña incorrecta' };
-      }
-
-      // 3. Si el password es correcto y no está migrado, mostrar mensaje
-      if (!userData.auth_id || userData.migration_status === 'pending') {
-        return { 
-          success: false, 
-          error: 'Tu cuenta necesita ser actualizada. Por favor contacta al administrador.',
-          needsMigration: true 
-        };
-      }
-
-      // 4. Si llegamos aquí, hay un problema
-      return { 
-        success: false, 
-        error: 'Error de autenticación. Por favor intenta más tarde.' 
-      };
-      
-    } catch (error) {
-      console.error('[AuthContext] Legacy login error:', error);
-      return { 
-        success: false, 
-        error: 'Error de conexión' 
-      };
-    }
-  };
-
   const logout = async () => {
     try {
       invalidateSessionCache();
       cleanupCookies();
+      const supabase = getSupabase();
       await supabase.auth.signOut();
       handleSignOut();
       console.log('[AuthContext] Logout completed successfully');
@@ -368,6 +312,7 @@ export function AuthProvider({ children }) {
 
   const resetPassword = async (email) => {
     try {
+      const supabase = getSupabase();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
@@ -393,6 +338,7 @@ export function AuthProvider({ children }) {
   // Logout remoto cross-device
   useEffect(() => {
     if (!usuarioActual) return;
+    const supabase = getSupabase();
     const channel = supabase
       .channel(`user-sessions-${usuarioActual}`)
       .on('broadcast', { event: 'logout' }, (payload) => {
@@ -408,6 +354,7 @@ export function AuthProvider({ children }) {
 
   const logoutAllDevices = async () => {
     if (!usuarioActual) return;
+    const supabase = getSupabase();
     const channel = supabase.channel(`user-sessions-${usuarioActual}`);
     await channel.send({
       type: 'broadcast',
@@ -433,6 +380,9 @@ export function AuthProvider({ children }) {
     resetPassword,
     logoutAllDevices,
     invalidateSessionCache,
+    empresasDisponibles,
+    isSuperAdmin,
+    cambiarEmpresa,
   };
 
   return (

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { supabase } from '../lib/supabase';
+import { createClient } from '../utils/supabase/client';
 import AdminNav from './components/AdminNav';
 import '../globals.css';
 
+const supabase = createClient();
 
 export default function AdminLayout({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
