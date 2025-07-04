@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../lib/supabase';
+import { createServiceRoleClient } from '../../utils/supabase/service-role';
 
 export async function POST(request) {
   try {
+    const supabaseAdmin = createServiceRoleClient();
     const body = await request.json();
 
     // Validar campos requeridos
@@ -49,6 +50,7 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
+    const supabaseAdmin = createServiceRoleClient();
     const body = await request.json();
     if (!body.id) {
       return NextResponse.json({ error: 'Falta el id del registro a actualizar' }, { status: 400 });

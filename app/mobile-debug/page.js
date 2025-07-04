@@ -3,7 +3,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase, testSupabaseConnection } from '../lib/supabase'
+import { createClient } from '../utils/supabase/client'
+
+const supabase = createClient()
 
 export default function MobileDebug() {
   const [info, setInfo] = useState({

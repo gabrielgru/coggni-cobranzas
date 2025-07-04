@@ -1,0 +1,64 @@
+/* app/components/shared/EmpresaSelector.module.css */
+.selectorContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--input-background);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 150px;
+}
+
+.select:hover {
+  border-color: var(--primary-color);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-left: 10px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .selectorContainer {
+    background-color: var(--card-background-dark);
+    border-color: var(--border-color-dark);
+  }
+  
+  .select {
+    background-color: var(--input-background-dark);
+    border-color: var(--border-color-dark);
+  }
+}

@@ -8,6 +8,8 @@ import Dashboard from './components/Dashboard';
 export default function Home() {
   const { usuarioActual, empresaActual, loading } = useAuth();
 
+  console.log('[Collections] Render', { usuarioActual, empresaActual, loading });
+
   // Mostrar loading mientras se verifica autenticación
   if (loading) {
     return (

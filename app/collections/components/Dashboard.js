@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { TEXTOS } from '../../utils/constants';
 import ThemeToggle from '../../components/shared/ThemeToggle';
@@ -8,48 +8,23 @@ import LanguageSelector from '../../components/shared/LanguageSelector';
 import FileUploadZone from './FileUploadZone';
 import OptionalSection from './OptionalSection';
 import { useRouter } from 'next/navigation';
-import { supabase, supabaseAdmin } from '../../lib/supabase';
+import { createServiceRoleClient } from '../../utils/supabase/service-role';
+
+// Utilidad para buscar por tipo de campo
+const hasFieldOfType = (campos, tipo) => {
+  return Object.values(campos || {}).some(campo => campo.tipo === tipo);
+};
 
 export default function Dashboard() {
-  const { usuarioActual, empresaActual, idioma, logout, changeIdioma } = useAuth();
+  const { usuarioActual, empresaActual, idioma, logout, changeIdioma, isLoadingEmpresa } = useAuth();
   const router = useRouter();
   
-  // TEMPORAL - Debug
-  console.log('Dashboard cargado. Empresa actual:', empresaActual);
-  // Agregar después de la línea 17 donde ya tienes un console.log
-  console.log('Campo email configurado:', {
-    tiene_email: empresaActual?.campos_contactos?.email,
-    nombre_email: empresaActual?.campos_contactos?.email?.nombre,
-    es_truthy: !!empresaActual?.campos_contactos?.email?.nombre,
-    empresa_id: empresaActual?.id,
-    empresa_nombre: empresaActual?.nombre,
-    empresa_monedas: empresaActual?.monedas,
-    empresa_paises_telefono: empresaActual?.paises_telefono,
-    empresa_idiomas_disponibles: empresaActual?.idiomas_disponibles,
-    empresa_campos_facturas: empresaActual?.campos_facturas,
-    empresa_campos_contactos: empresaActual?.campos_contactos
-  });
-
-  // Debug completo de la configuración
-  console.log('Dashboard - Empresa actual completa:', empresaActual);
-  console.log('Dashboard - Campos contactos:', empresaActual?.campos_contactos);
-  console.log('Dashboard - Email config detallado:', {
-    campo_email_completo: JSON.stringify(empresaActual?.campos_contactos?.email),
-    keys: empresaActual?.campos_contactos?.email ? Object.keys(empresaActual.campos_contactos.email) : 'no keys',
-    tiene_nombre: 'nombre' in (empresaActual?.campos_contactos?.email || {}),
-    valor_nombre: empresaActual?.campos_contactos?.email?.nombre
-  });
-  console.log('Todos los campos_contactos:', JSON.stringify(empresaActual?.campos_contactos, null, 2));
-
   // Estados principales
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedContactsFile, setSelectedContactsFile] = useState(null);
   const [fileValidationResult, setFileValidationResult] = useState(null);
   const [contactsValidationResult, setContactsValidationResult] = useState(null);
-  // Si la empresa no tiene email, usar solo_whatsapp por defecto
-  const [strategy, setStrategy] = useState(
-    empresaActual?.campos_contactos.email?.nombre ? 'whatsapp_primero' : 'solo_whatsapp'
-  );
+  const [strategy, setStrategy] = useState('whatsapp_primero');
   const [includeUpcoming, setIncludeUpcoming] = useState(false);
   const [daysInput, setDaysInput] = useState(7);
   const [updateContacts, setUpdateContacts] = useState(false);
@@ -61,7 +36,34 @@ export default function Dashboard() {
   const [showDaysDetail, setShowDaysDetail] = useState(false);
   const [currentProgressStep, setCurrentProgressStep] = useState('');
 
+  // Estado para forzar re-render del logo
+  const [logoKey, setLogoKey] = useState(0);
+
   const textos = TEXTOS[idioma].dashboard;
+
+  // NUEVO: Effect para detectar cambios de empresa
+  useEffect(() => {
+    if (!empresaActual) return;
+    
+    console.log('🔄 Empresa cambió a:', empresaActual.nombre);
+    
+    // Resetear el formulario cuando cambia la empresa
+    resetForm();
+    
+    // Actualizar estrategia por defecto según la nueva empresa
+    const nuevaEstrategia = hasFieldOfType(empresaActual.campos_contactos, 'email') 
+      ? 'whatsapp_primero' 
+      : 'solo_whatsapp';
+    setStrategy(nuevaEstrategia);
+    
+    // Forzar re-render del logo cambiando la key
+    setLogoKey(prev => prev + 1);
+    
+    // Actualizar idioma si es necesario
+    if (empresaActual.idiomas_disponibles && !empresaActual.idiomas_disponibles.includes(idioma)) {
+      changeIdioma(empresaActual.idiomas_disponibles[0]);
+    }
+  }, [empresaActual?.id]); // Detectar cambios en el ID de la empresa
 
   // Funciones de UI
   const toggleColumns = (type) => {
@@ -291,7 +293,6 @@ export default function Dashboard() {
         throw new Error('No se pudo inicializar el procesamiento. Por favor, intenta nuevamente.');
       }
 
-
       // AGREGAR AQUÍ EL TIMEOUT
       setTimeout(async () => {
         if (logId) {
@@ -309,8 +310,6 @@ export default function Dashboard() {
           }
         }
       }, 300000); // 5 minutos
-
-
 
       // Simular progreso
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -437,13 +436,27 @@ export default function Dashboard() {
     setSelectedContactsFile(null);
     setFileValidationResult(null);
     setContactsValidationResult(null);
-    setStrategy(empresaActual?.campos_contactos.email?.nombre ? 'whatsapp_primero' : 'solo_whatsapp');
     setIncludeUpcoming(false);
     setUpdateContacts(false);
     setDaysInput(7);
     setStatusMessage({ show: false });
     setCurrentProgressStep('');
+    setShowColumns({ facturas: false, contactos: false });
+    setShowDaysDetail(false);
   };
+
+  // Si no hay empresa actual o está cargando, mostrar loading
+  if (!empresaActual || isLoadingEmpresa) {
+    return (
+      <div className="app-container">
+        <div className="container">
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <p>Cargando información de la empresa...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -468,6 +481,7 @@ export default function Dashboard() {
             <div className="company-header">
               <div className="company-logo-wrapper">
                 <img 
+                  key={logoKey} // Forzar re-render cuando cambia empresa
                   src={`/company-logos/${empresaActual.id}.png`}
                   alt={`${empresaActual.nombre} Logo`} 
                   onError={(e) => {
@@ -575,7 +589,7 @@ export default function Dashboard() {
         </div>
 
         {/* Estrategia de Envío - Solo mostrar si la empresa tiene email disponible */}
-        {empresaActual.campos_contactos.email?.nombre && (
+        {hasFieldOfType(empresaActual.campos_contactos, 'email') && (
           <div className="section">
             <h2>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -753,7 +767,7 @@ export default function Dashboard() {
                   <span><strong>{textos.archivo}:</strong> {selectedFile.name}</span>
                 </div>
                 {/* Solo mostrar estrategia si la empresa tiene email */}
-                {empresaActual?.campos_contactos.email?.nombre && (
+                {hasFieldOfType(empresaActual.campos_contactos, 'email') && (
                   <div className="summary-item">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="validation-icon">
                       <path d="M9 11l3 3L22 4"/>
