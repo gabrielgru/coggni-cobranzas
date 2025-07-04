@@ -1,7 +1,11 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { updateSession } from './app/utils/supabase/middleware';
 
 export async function middleware(request) {
+  // Excluir rutas de API del middleware
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    return NextResponse.next();
+  }
   return await updateSession(request);
 }
 
