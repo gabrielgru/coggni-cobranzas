@@ -12,7 +12,7 @@ export default function HomePage() {
     if (!loading) {
       if (usuarioActual && empresaActual) {
         // Usuario autenticado - redirigir a dashboard
-        router.push('/auth'); // Por ahora directo a auth hasta que dashboard esté listo - cambio para subir a git
+        router.push('/collections'); // Redirigir a collections en vez de /auth
       } else {
         // No autenticado - redirigir a login
         router.push('/login');
