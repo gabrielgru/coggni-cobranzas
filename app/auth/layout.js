@@ -14,24 +14,20 @@ export default function AuthenticatedLayout({ children }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Verificar autenticación
-    if (!usuarioActual || !empresaActual) {
+    if (!loading && (!usuarioActual || !empresaActual)) {
       router.push('/login');
       return;
     }
-
-    // Solo permitir acceso a clientes (no admin)
     if (userType === 'admin') {
       router.push('/admin');
       return;
     }
-
-    setIsAuthenticated(true);
-    setLoading(false);
-
-    // Actualizar actividad cuando se carga una nueva página
+    if (usuarioActual && empresaActual) {
+      setIsAuthenticated(true);
+      setLoading(false);
+    }
     updateActivity();
-  }, [usuarioActual, empresaActual, userType, router, updateActivity]);
+  }, [usuarioActual, empresaActual, userType, loading, router, updateActivity]);
 
   // Configuración de módulos disponibles
   const availableModules = [

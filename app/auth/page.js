@@ -3,9 +3,31 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
-  const { empresaActual } = useAuth();
+  const { usuarioActual, empresaActual, loading } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!loading && (!usuarioActual || !empresaActual)) {
+      router.push('/login');
+    }
+  }, [usuarioActual, empresaActual, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="dashboard-container">
+        <div style={{ textAlign: 'center', padding: '50px' }}>
+          <p>Verificando autenticación...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!usuarioActual || !empresaActual) {
+    return null;
+  }
 
   return (
     <div className="dashboard-container">

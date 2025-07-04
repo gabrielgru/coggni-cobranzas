@@ -445,6 +445,11 @@ export default function Dashboard() {
     setShowDaysDetail(false);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
   // Si no hay empresa actual o está cargando, mostrar loading
   if (!empresaActual || isLoadingEmpresa) {
     return (
@@ -524,7 +529,7 @@ export default function Dashboard() {
                 </p>
               </div>
               
-              <button onClick={logout} className="logout-button-modern">
+              <button onClick={handleLogout} className="logout-button-modern">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                   <polyline points="16 17 21 12 16 7"/>
