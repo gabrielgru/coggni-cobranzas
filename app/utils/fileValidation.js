@@ -87,13 +87,30 @@ export async function validateFacturasFile(file, empresaConfig) {
       data = await readExcelFile(file);
     }
     
-    if (!data || data.length < 2) {
-      errors.push('El archivo está vacío o no contiene datos');
+    // ========================================
+    // VALIDACIÓN: Archivo completamente vacío
+    // ========================================
+    if (!data || data.length === 0) {
+      errors.push('El archivo está completamente vacío');
+      return { valid: false, errors, warnings };
+    }
+    
+    // ========================================
+    // VALIDACIÓN: Solo headers sin datos
+    // ========================================
+    if (data.length === 1) {
+      errors.push('El archivo solo contiene nombres de columnas pero no tiene datos');
       return { valid: false, errors, warnings };
     }
     
     // Obtener headers (primera fila)
     const headers = data[0].map(h => normalizeColumnName(String(h || '')));
+    
+    // Validar que hay headers
+    if (headers.every(h => h === '')) {
+      errors.push('El archivo no contiene nombres de columnas válidos');
+      return { valid: false, errors, warnings };
+    }
     
     // Obtener columnas requeridas de la configuración - SOLO las que están marcadas como requeridas
     const requiredColumns = [];
@@ -132,7 +149,9 @@ export async function validateFacturasFile(file, empresaConfig) {
       }
     });
     
-    // CAMBIO IMPORTANTE: Primero contar las filas con contenido real
+    // ========================================
+    // IMPORTANTE: Contar filas con contenido real (sin advertir sobre vacías)
+    // ========================================
     let actualDataRows = 0;
     let lastDataRowIndex = 0;
     
@@ -149,10 +168,19 @@ export async function validateFacturasFile(file, empresaConfig) {
       }
     }
     
+    // ========================================
+    // VALIDACIÓN: Archivo con headers pero sin datos reales
+    // ========================================
+    if (actualDataRows === 0) {
+      errors.push('El archivo contiene columnas pero no tiene ningún registro de datos');
+      return { valid: false, errors, warnings };
+    }
+    
     // Validar datos fila por fila (solo hasta donde hay datos reales)
     let rowsWithoutVencim = 0;
     let invalidCurrencies = 0;
     let invalidSaldos = 0;
+    let saldoFormatErrors = [];
     
     for (let i = 1; i <= lastDataRowIndex; i++) {
       const row = data[i];
@@ -180,11 +208,31 @@ export async function validateFacturasFile(file, empresaConfig) {
         }
       }
       
-      // Validar saldo si es requerido
+      // ========================================
+      // VALIDACIÓN MEJORADA: Formato numérico en saldo
+      // ========================================
       if (columnIndices.saldo !== undefined && empresaConfig.campos_facturas.saldo.requerido) {
         const saldo = row[columnIndices.saldo];
-        if (isNaN(Number(saldo)) || saldo === '') {
+        
+        // Verificar que no esté vacío
+        if (saldo === '' || saldo === null || saldo === undefined) {
           invalidSaldos++;
+          if (saldoFormatErrors.length < 5) {
+            saldoFormatErrors.push(`Fila ${i + 1}: saldo vacío`);
+          }
+        } else {
+          // Intentar convertir a número
+          const saldoStr = String(saldo).trim();
+          // Remover separadores de miles y reemplazar coma por punto
+          const saldoNormalized = saldoStr.replace(/[^\d,.-]/g, '').replace(',', '.');
+          const saldoNum = Number(saldoNormalized);
+          
+          if (isNaN(saldoNum)) {
+            invalidSaldos++;
+            if (saldoFormatErrors.length < 5) {
+              saldoFormatErrors.push(`Fila ${i + 1}: saldo "${saldo}" no es un número válido`);
+            }
+          }
         }
       }
     }
@@ -198,15 +246,21 @@ export async function validateFacturasFile(file, empresaConfig) {
       errors.push(`${invalidCurrencies} facturas tienen moneda inválida (debe ser ${empresaConfig.monedas.join(' o ')})`);
     }
     
+    // ========================================
+    // ERRORES MEJORADOS: Detalles de formato de saldo
+    // ========================================
     if (invalidSaldos > 0) {
-      errors.push(`${invalidSaldos} facturas tienen saldo inválido`);
+      errors.push(`${invalidSaldos} facturas tienen saldo inválido o vacío`);
+      // Agregar ejemplos específicos
+      saldoFormatErrors.forEach(error => {
+        errors.push(error);
+      });
+      if (invalidSaldos > 5) {
+        errors.push(`... y ${invalidSaldos - 5} errores más en formato de saldo`);
+      }
     }
     
-    // Advertir sobre filas vacías al final
-    const emptyRowsAtEnd = data.length - 1 - lastDataRowIndex;
-    if (emptyRowsAtEnd > 10) {
-      warnings.push(`El archivo contiene ${emptyRowsAtEnd} filas vacías al final que fueron ignoradas`);
-    }
+    // NO advertir sobre filas vacías al final (manejo interno)
     
     return {
       valid: errors.length === 0,
@@ -237,13 +291,30 @@ export async function validateContactsFile(file, empresaConfig) {
       data = await readExcelFile(file);
     }
     
-    if (!data || data.length < 2) {
-      errors.push('El archivo está vacío o no contiene datos');
+    // ========================================
+    // VALIDACIÓN: Archivo completamente vacío
+    // ========================================
+    if (!data || data.length === 0) {
+      errors.push('El archivo está completamente vacío');
+      return { valid: false, errors, warnings };
+    }
+    
+    // ========================================
+    // VALIDACIÓN: Solo headers sin datos
+    // ========================================
+    if (data.length === 1) {
+      errors.push('El archivo solo contiene nombres de columnas pero no tiene datos');
       return { valid: false, errors, warnings };
     }
     
     // Obtener headers (primera fila)
     const headers = data[0].map(h => normalizeColumnName(String(h || '')));
+    
+    // Validar que hay headers
+    if (headers.every(h => h === '')) {
+      errors.push('El archivo no contiene nombres de columnas válidos');
+      return { valid: false, errors, warnings };
+    }
     
     // Obtener columnas requeridas de la configuración - SOLO las que están marcadas como requeridas
     const requiredColumns = [];
@@ -282,7 +353,9 @@ export async function validateContactsFile(file, empresaConfig) {
       }
     });
     
-    // CAMBIO IMPORTANTE: Primero contar las filas con contenido real
+    // ========================================
+    // IMPORTANTE: Contar filas con contenido real (sin advertir sobre vacías)
+    // ========================================
     let actualDataRows = 0;
     let lastDataRowIndex = 0;
     
@@ -297,6 +370,14 @@ export async function validateContactsFile(file, empresaConfig) {
         actualDataRows++;
         lastDataRowIndex = i;
       }
+    }
+    
+    // ========================================
+    // VALIDACIÓN: Archivo con headers pero sin datos reales
+    // ========================================
+    if (actualDataRows === 0) {
+      errors.push('El archivo contiene columnas pero no tiene ningún registro de datos');
+      return { valid: false, errors, warnings };
     }
     
     // Validar emails solo si el campo existe Y es requerido
@@ -330,11 +411,7 @@ export async function validateContactsFile(file, empresaConfig) {
       }
     }
     
-    // Advertir sobre filas vacías al final
-    const emptyRowsAtEnd = data.length - 1 - lastDataRowIndex;
-    if (emptyRowsAtEnd > 10) {
-      warnings.push(`El archivo contiene ${emptyRowsAtEnd} filas vacías al final que fueron ignoradas`);
-    }
+    // NO advertir sobre filas vacías al final (manejo interno)
     
     return {
       valid: errors.length === 0,
