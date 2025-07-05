@@ -1,7 +1,16 @@
+// ========================================
+// ARCHIVO: app/utils/supabase/middleware.js
+// MIDDLEWARE CORREGIDO - httpOnly: false
+// Qué hace: Refresca tokens con cookies accesibles desde JS
+// Por qué: Para que el cliente pueda leer la sesión
+// ========================================
+
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
 export async function updateSession(request) {
+  console.log('[Middleware] Processing request:', request.nextUrl.pathname);
+  
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -26,7 +35,7 @@ export async function updateSession(request) {
               ...options,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
-              httpOnly: true,
+              httpOnly: false, // ← CAMBIO CRÍTICO: false para que JS pueda acceder
               path: '/',
             })
           );
@@ -41,15 +50,19 @@ export async function updateSession(request) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  console.log('[Middleware] User found:', user ? user.email : 'none');
+
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith('/login')
+    !request.nextUrl.pathname.startsWith('/login') &&
+    !request.nextUrl.pathname.startsWith('/api') &&
+    !request.nextUrl.pathname.startsWith('/_next')
   ) {
-    // no user, redirect to login
+    console.log('[Middleware] Redirecting to login');
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
-} 
+}
