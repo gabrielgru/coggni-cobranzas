@@ -1,4 +1,24 @@
 // app/api/companies/[id]/config/route.js
+// FIXED VERSION - Uses database fields instead of hardcoded values
+
+// ========================================
+// What is this file for:
+// This API route provides company configuration data for the n8n workflow automation system.
+// It serves as the central configuration endpoint that tells n8n how to process invoices and 
+// contacts for each company, including field mappings, phone number validation rules, 
+// currency settings, and messaging templates.
+//
+// Why do we need it:
+// Each company (Dental Link, La Perla, etc.) has different Excel column names, phone number 
+// formats, currencies, and business rules. Without this centralized configuration, we would 
+// need to hardcode company-specific logic throughout the n8n workflow. This API allows us to:
+// 1. Dynamically map Excel columns to standard internal fields
+// 2. Set correct phone number validation rules per country  
+// 3. Configure currency defaults and messaging templates
+// 4. Scale to new companies without changing n8n workflow code
+// 5. Maintain company settings in the database instead of code
+// ========================================
+
 import { createClient } from '../../../../utils/supabase/server';
 
 // Cache simple en memoria (por ahora)
@@ -34,10 +54,12 @@ export async function GET(request, { params }) {
       return Response.json(mockData, { headers });
     }
 
-    // Buscar empresa
+    // ========================================
+    // FIX: Buscar empresa con campos de país
+    // ========================================
     const { data: company, error: companyError } = await supabase
       .from('companies')
-      .select('*')
+      .select('id, name, currencies, languages, is_active, admin_email, country, phone_countries')  // ← Added country and phone_countries
       .eq('id', companyId)
       .single();
 
@@ -67,18 +89,12 @@ export async function GET(request, { params }) {
     if (fieldMappings) {
       fieldMappings.forEach(mapping => {
         if (mapping.file_type === 'factura') {
-          // Mapear internal_field_name a company_field_name
           invoiceFields[mapping.internal_field_name] = mapping.company_field_name;
-          
-          // Agregar a campos requeridos si corresponde
           if (mapping.is_required) {
             requiredInvoiceFields.push(mapping.internal_field_name);
           }
         } else if (mapping.file_type === 'cliente') {
-          // Mapear internal_field_name a company_field_name
           clientFields[mapping.internal_field_name] = mapping.company_field_name;
-          
-          // Agregar a campos requeridos si corresponde
           if (mapping.is_required) {
             requiredClientFields.push(mapping.internal_field_name);
           }
@@ -89,13 +105,19 @@ export async function GET(request, { params }) {
     // Determinar moneda por defecto según la empresa
     const defaultCurrency = company.currencies?.[0] || '$';
     
-    // Determinar códigos de país según la empresa
-    let countryCode = ['UY']; // Default
-    if (companyId === 'dental-link') {
-      countryCode = ['UY', 'AR', 'ES'];
-    } else if (companyId === 'la-perla') {
-      countryCode = ['ES', 'FR', 'IT'];
+    // ========================================
+    // FIX: Usar campos de la base de datos en lugar de hardcodeo
+    // ========================================
+    let countryCode = ['UY']; // Default fallback
+    
+    if (company.phone_countries && Array.isArray(company.phone_countries) && company.phone_countries.length > 0) {
+      // Usar phone_countries de la base de datos
+      countryCode = company.phone_countries;
+    } else if (company.country) {
+      // Si no hay phone_countries, usar country como fallback
+      countryCode = [company.country];
     }
+    // Si ambos están vacíos, mantener el default ['UY']
 
     // TODO: Buscar messaging config cuando exista la tabla
     const messagingConfig = getDefaultMessagingConfig(companyId);
@@ -106,36 +128,41 @@ export async function GET(request, { params }) {
       name: company.name,
       defaults: {
         currency: defaultCurrency,
-        country_codes: countryCode
+        country_codes: countryCode  // ← Ahora viene de la base de datos
       },
       
-      // Field mappings para n8n - usando los nombres en inglés como keys
       field_mappings: {
         invoice: invoiceFields,
         client: clientFields
       },
       
-      // Campos requeridos
       required_fields: {
         invoice: requiredInvoiceFields,
         client: requiredClientFields
       },
       
-      // Información adicional de la empresa
       company_info: {
         currencies: company.currencies || [],
         languages: company.languages || [],
         is_active: company.is_active,
-        admin_email: company.admin_email || ''
+        admin_email: company.admin_email || '',
+        // ========================================
+        // NUEVO: Incluir campos de país para debugging
+        // ========================================
+        country: company.country,
+        phone_countries: company.phone_countries
       },
       
-      // Configuración de mensajería
       messaging: messagingConfig,
       
-      // Metadata
       _meta: {
         timestamp: new Date().toISOString(),
-        cached: false
+        cached: false,
+        // ========================================
+        // DEBUG: Info sobre qué países se usaron
+        // ========================================
+        country_source: company.phone_countries?.length > 0 ? 'phone_countries' : 
+                       company.country ? 'country_fallback' : 'default_fallback'
       }
     };
 
@@ -168,7 +195,9 @@ export async function OPTIONS(request) {
   });
 }
 
-// Configuración por defecto según empresa
+// ========================================
+// FUNCIÓN: getDefaultMessagingConfig - Sin cambios
+// ========================================
 function getDefaultMessagingConfig(companyId) {
   const configs = {
     'dental-link': {
@@ -187,12 +216,12 @@ function getDefaultMessagingConfig(companyId) {
     },
     'la-perla': {
       payment_link_whatsapp: false,
-      payment_link_email: false, // La Perla no tiene email
+      payment_link_email: false,
       show_days_overdue: true,
       include_company_logo: true,
       greeting_style: 'estimado',
       whatsapp_footer: 'Atentamente,\nLa Perla',
-      email_footer: '', // No se usa porque no tienen email
+      email_footer: '',
       currency_format: {
         thousand_separator: '.',
         decimal_separator: ',',
@@ -218,7 +247,9 @@ function getDefaultMessagingConfig(companyId) {
   return configs[companyId] || configs['dental-link'];
 }
 
-// Mock data para desarrollo - ACTUALIZADO con nueva estructura
+// ========================================
+// FUNCIÓN: getMockData - ACTUALIZADA para usar datos consistentes
+// ========================================
 function getMockData(companyId) {
   const companies = {
     'dental-link': {
@@ -226,7 +257,7 @@ function getMockData(companyId) {
       name: 'Dental Link',
       defaults: {
         currency: '$',
-        country_codes: ['UY', 'AR', 'ES']
+        country_codes: ['UY', 'AR', 'ES']  // Consistente con lo esperado
       },
       field_mappings: {
         invoice: {
@@ -253,7 +284,9 @@ function getMockData(companyId) {
         currencies: ['$', 'U$S'],
         languages: ['es'],
         is_active: true,
-        admin_email: 'admin@dentallink.com'
+        admin_email: 'admin@dentallink.com',
+        country: 'UY',
+        phone_countries: ['UY', 'AR', 'ES']
       }
     },
     'la-perla': {
@@ -261,7 +294,7 @@ function getMockData(companyId) {
       name: 'La Perla',
       defaults: {
         currency: 'EUR',
-        country_codes: ['ES', 'FR', 'IT']
+        country_codes: ['ES', 'FR', 'IT']  // ← FIXED: Ahora usa valores correctos
       },
       field_mappings: {
         invoice: {
@@ -285,7 +318,9 @@ function getMockData(companyId) {
         currencies: ['EUR'],
         languages: ['es'],
         is_active: true,
-        admin_email: 'admin@laperla.com'
+        admin_email: 'admin@laperla.com',
+        country: 'ES',                        // ← FIXED
+        phone_countries: ['ES', 'FR', 'IT']   // ← FIXED
       }
     }
   };
