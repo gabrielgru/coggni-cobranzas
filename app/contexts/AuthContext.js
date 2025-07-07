@@ -198,6 +198,11 @@ export function AuthProvider({ children }) {
   // Qué hace: Carga usuario y empresa desde la base de datos
   // Por qué: Para casos de autenticación normal (no SSR)
   // ========================================
+  // FUNCIÓN: Cargar datos de usuario - CORREGIDA
+  // Qué hace: Carga usuario y empresa desde la base de datos
+  // Por qué: Para casos de autenticación normal (no SSR)
+  // CAMBIO CRÍTICO: Agregar setLoading(false) al final
+  // ========================================
   const loadUserData = async (authUser) => {
     try {
       console.log('[AuthContext] loadUserData started for:', authUser.email);
@@ -213,12 +218,14 @@ export function AuthProvider({ children }) {
       if (userError) {
         console.error('[AuthContext] Error loading user:', userError);
         setError(userError.message || 'Error cargando usuario');
+        setLoading(false); // IMPORTANTE: Actualizar loading en error
         return;
       }
       
       if (!userData || !userData.companies) {
         console.error('[AuthContext] No userData or company found');
         setError('No se encontró el usuario o empresa');
+        setLoading(false); // IMPORTANTE: Actualizar loading en error
         return;
       }
       
@@ -229,12 +236,17 @@ export function AuthProvider({ children }) {
       setUserType('client');
       setError(null);
       
+      // CAMBIO CRÍTICO: Actualizar loading al completar exitosamente
+      setLoading(false);
+      console.log('[AuthContext] User data loading completed, loading set to false');
+      
       // Actualizar última actividad al cargar datos
       setLastActivity(Date.now());
       
     } catch (error) {
       console.error('[AuthContext] loadUserData error:', error);
       setError(error.message || 'Error cargando usuario');
+      setLoading(false); // IMPORTANTE: Actualizar loading en catch
     }
   };
 
@@ -378,6 +390,12 @@ export function AuthProvider({ children }) {
         if (session?.user && mounted) {
           console.log('[AuthContext] Session found, loading user data');
           await loadUserData(session.user);
+        } else {
+          // CAMBIO IMPORTANTE: Si no hay sesión, marcar como no loading
+          console.log('[AuthContext] No session found, setting loading to false');
+          if (mounted) {
+            setLoading(false);
+          }
         }
         
         // Configurar listener para cambios
@@ -426,6 +444,10 @@ export function AuthProvider({ children }) {
   // Por qué: Para resolver el problema de login colgado
   // CAMBIO CLAVE: Espera hasta que usuarioActual y empresaActual estén listos
   // ========================================
+  // ========================================
+  // FUNCIÓN: Login MEJORADA v2
+  // CAMBIO: Verificar también el estado loading
+  // ========================================
   const login = async (email, password) => {
     console.log('[AuthContext] Attempting login');
     try {
@@ -443,26 +465,56 @@ export function AuthProvider({ children }) {
       console.log('[AuthContext] Login successful, waiting for data to load...');
       
       // CAMBIO IMPORTANTE: Esperar a que los datos se carguen
-      // Esto resuelve el problema del login colgado
+      // Verificar TAMBIÉN que loading sea false
       let attempts = 0;
       const maxAttempts = 30; // 3 segundos máximo (30 * 100ms)
       
       while (attempts < maxAttempts) {
-        // Verificar si los datos ya están cargados
-        if (usuarioActual && empresaActual) {
+        // CAMBIO: Verificar también que loading sea false
+        if (usuarioActual && empresaActual && !loading) {
           console.log('[AuthContext] Data loaded successfully');
           return { success: true };
+        }
+        
+        // Si hay error, retornar inmediatamente
+        if (error) {
+          console.log('[AuthContext] Error detected during loading:', error);
+          return { success: false, error };
         }
         
         // Esperar 100ms antes de verificar de nuevo
         await new Promise(resolve => setTimeout(resolve, 100));
         attempts++;
+        
+        // Log cada 10 intentos para debug
+        if (attempts % 10 === 0) {
+          console.log(`[AuthContext] Waiting for data... attempt ${attempts}/30`, {
+            hasUser: !!usuarioActual,
+            hasCompany: !!empresaActual,
+            isLoading: loading,
+            hasError: !!error
+          });
+        }
       }
       
-      // Si después de 3 segundos no se cargaron los datos, igual retornar success
-      // El onAuthStateChange debería manejar la carga eventualmente
-      console.log('[AuthContext] Data loading timeout, but login was successful');
-      return { success: true };
+      // Si después de 3 segundos no se cargaron los datos
+      console.log('[AuthContext] Data loading timeout', {
+        hasUser: !!usuarioActual,
+        hasCompany: !!empresaActual,
+        isLoading: loading,
+        finalError: error
+      });
+      
+      // Si llegamos aquí pero el login fue exitoso, forzar reload
+      if (!error) {
+        console.log('[AuthContext] Login successful but data loading failed, forcing reload...');
+        setTimeout(() => {
+          window.location.href = '/collections';
+        }, 100);
+        return { success: true };
+      }
+      
+      return { success: false, error: error || 'Timeout al cargar datos' };
       
     } catch (error) {
       console.error('[AuthContext] Login error:', error);
