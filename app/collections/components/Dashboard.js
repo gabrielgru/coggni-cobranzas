@@ -8,7 +8,6 @@ import LanguageSelector from '../../components/shared/LanguageSelector';
 import FileUploadZone from './FileUploadZone';
 import OptionalSection from './OptionalSection';
 import { useRouter } from 'next/navigation';
-import { createServiceRoleClient } from '../../utils/supabase/service-role';
 
 // Utilidad para buscar por tipo de campo
 const hasFieldOfType = (campos, tipo) => {
@@ -146,7 +145,10 @@ export default function Dashboard() {
     return true;
   };
 
-  // Función para crear el log inicial
+  // ========================================
+  // FUNCIÓN: Crear log inicial de procesamiento en Supabase
+  // Guarda un registro del inicio del procesamiento para trazabilidad y debugging
+  // ========================================
   const createProcessingLog = async (webhookCallId, startTime) => {
     const logPayload = {
       webhook_call_id: webhookCallId,
@@ -188,7 +190,10 @@ export default function Dashboard() {
     return result.data;
   };
 
-  // Función para actualizar el log
+  // ========================================
+  // FUNCIÓN: Actualizar log de procesamiento en Supabase
+  // Permite marcar el procesamiento como success, error, etc. para trazabilidad
+  // ========================================
   const updateProcessingLog = async (logId, status) => {
     try {
       await fetch('/api/log-processing', {
@@ -205,6 +210,98 @@ export default function Dashboard() {
       });
     } catch (err) {
       console.error('Error al actualizar log:', err);
+    }
+  };
+
+  // ========================================
+  // FUNCIÓN: getWebhookUrlFromDB (versión con API route)
+  // 
+  // ¿QUÉ HACE ESTA FUNCIÓN?
+  // Obtiene la URL del webhook desde la base de datos a través de una
+  // API route segura en lugar de acceder directamente a Supabase.
+  //
+  // ¿POR QUÉ CAMBIÓ?
+  // - Antes: Intentaba usar service role en el frontend (inseguro/imposible)
+  // - Ahora: Llama a una API route que valida permisos en el backend
+  // - Evita exponer credenciales y mantiene la seguridad
+  //
+  // ¿CÓMO FUNCIONA?
+  // 1. Hace un POST a /api/get-webhook-url con el company_id
+  // 2. La API valida que el usuario tenga permisos
+  // 3. Si todo está bien, devuelve la URL
+  // 4. Si hay error, propaga el mensaje al usuario
+  //
+  // ¿CUÁNDO SE USA?
+  // - En sendToWebhook() antes de enviar los archivos
+  // - Cada vez que se procesa una cobranza
+  // ========================================
+  const getWebhookUrlFromDB = async (companyId) => {
+    try {
+      console.log('[Dashboard] Obteniendo URL de webhook para empresa:', companyId);
+      
+      // ========================================
+      // Llamar a la API route interna
+      // NOTA: No necesitamos autenticación adicional aquí porque
+      // las cookies de sesión se envían automáticamente
+      // ========================================
+      const response = await fetch('/api/get-webhook-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ companyId }),
+      });
+
+      // ========================================
+      // Manejo de respuestas de error
+      // La API puede devolver: 401 (no auth), 403 (no permisos), 
+      // 404 (no webhook), 500 (error servidor)
+      // ========================================
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[Dashboard] Error obteniendo webhook URL:', {
+          status: response.status,
+          error: errorData.error
+        });
+        
+        // Mensajes de error personalizados según el código
+        if (response.status === 401) {
+          throw new Error('Usuario no autenticado. Por favor, inicia sesión nuevamente.');
+        } else if (response.status === 403) {
+          throw new Error('No tienes permisos para acceder a esta empresa.');
+        } else if (response.status === 404) {
+          throw new Error('No se encontró un webhook activo para la empresa. Contacta al administrador.');
+        } else {
+          throw new Error(errorData.error || 'Error obteniendo la configuración del webhook.');
+        }
+      }
+
+      // ========================================
+      // Extraer y validar la URL
+      // ========================================
+      const { url } = await response.json();
+      
+      if (!url || typeof url !== 'string' || url.trim() === '') {
+        console.error('[Dashboard] URL de webhook inválida recibida:', url);
+        throw new Error('La URL del webhook es inválida. Contacta al administrador.');
+      }
+
+      console.log('[Dashboard] URL de webhook obtenida exitosamente');
+      return url;
+      
+    } catch (error) {
+      // ========================================
+      // Manejo de errores de red o inesperados
+      // ========================================
+      console.error('[Dashboard] Error en getWebhookUrlFromDB:', error);
+      
+      // Si el error ya tiene un mensaje personalizado, usarlo
+      if (error.message) {
+        throw error;
+      }
+      
+      // Error genérico para casos no manejados
+      throw new Error('Error de conexión al obtener la configuración. Intenta nuevamente.');
     }
   };
 
@@ -234,7 +331,15 @@ export default function Dashboard() {
     formData.append('empresa_nombre', empresaActual.nombre);
     formData.append('empresa_monedas', JSON.stringify(empresaActual.monedas));
     formData.append('empresa_paises_telefono', JSON.stringify(empresaActual.paises_telefono));
-    formData.append('empresa_admin_email', empresaActual.admin_email || '');
+    formData.append('empresa_admin_email', empresaActual.admin_email);
+    formData.append('empresa_country', empresaActual.country);
+
+    // === NUEVO: Obtener la URL del webhook desde la tabla webhooks ===
+    const webhookUrl = await getWebhookUrlFromDB(empresaActual.id);
+    console.log('URL del webhook que se usará (desde tabla webhooks):', webhookUrl);
+    if (!webhookUrl || typeof webhookUrl !== 'string' || webhookUrl.trim() === '') {
+      throw new Error('No se encontró la URL del webhook para la empresa en la tabla webhooks. Verifica la configuración.');
+    }
 
     // Debug info
     console.log('=== ENVIANDO A WEBHOOK ===');
@@ -242,8 +347,8 @@ export default function Dashboard() {
     console.log('Empresa:', empresaActual.nombre);
     console.log('Estrategia:', strategy);
 
-    const webhookUrl = `${empresaActual.webhook_url}?webhook_call_id=${webhookCallId}`;
-    const response = await fetch(webhookUrl, {
+    const fullWebhookUrl = `${webhookUrl}?webhook_call_id=${webhookCallId}`;
+    const response = await fetch(fullWebhookUrl, {
       method: 'POST',
       body: formData
     });

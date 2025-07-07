@@ -1,8 +1,34 @@
 // ========================================
 // ARCHIVO: app/contexts/AuthContext.js
 // CONTEXTO DE AUTENTICACIÓN CON SOPORTE SSR
-// Qué hace: Maneja autenticación con datos del servidor
-// Por qué: Evita problemas de cookies HttpOnly
+// 
+// ¿QUÉ HACE ESTE ARCHIVO?
+// Este archivo contiene el contexto de autenticación que maneja todo el estado
+// relacionado con el usuario autenticado y su empresa. Es el "cerebro" que
+// mantiene la información del usuario disponible en toda la aplicación.
+//
+// ¿POR QUÉ EXISTE?
+// - React Context permite compartir estado entre componentes sin props
+// - Evita "prop drilling" (pasar props por muchos niveles)
+// - Centraliza la lógica de autenticación
+// - Mantiene la sesión del usuario consistente
+// - Soporta Server-Side Rendering (SSR) para mejor performance
+//
+// ¿QUÉ DATOS MANEJA?
+// - Usuario autenticado (email, tipo de usuario)
+// - Datos de la empresa (configuración, campos, webhook)
+// - Estado de carga y errores
+// - Idioma seleccionado
+//
+// ¿CÓMO SE USA?
+// - useAuth() hook en cualquier componente
+// - initializeWithServerData() para datos del servidor
+// - logout() para cerrar sesión
+//
+// ¿POR QUÉ SOPORTE SSR?
+// - Evita problemas con cookies HttpOnly
+// - Mejor SEO y performance inicial
+// - Datos disponibles inmediatamente
 // ========================================
 
 'use client';
@@ -25,8 +51,22 @@ export function AuthProvider({ children }) {
 
   // ========================================
   // FUNCIÓN: Inicializar con datos del servidor
-  // Qué hace: Recibe datos del servidor y los establece en el contexto
-  // Por qué: Evita el loading inicial y problemas de sesión
+  // 
+  // ¿QUÉ HACE ESTA FUNCIÓN?
+  // Recibe datos que ya fueron cargados en el servidor y los establece
+  // en el contexto. Es la forma más eficiente de inicializar porque
+  // evita hacer requests adicionales desde el cliente.
+  //
+  // ¿POR QUÉ ES IMPORTANTE?
+  // - Evita el "loading" inicial molesto
+  // - Los datos están disponibles inmediatamente
+  // - Mejor experiencia de usuario
+  // - Evita problemas de hidratación en SSR
+  //
+  // ¿CUÁNDO SE USA?
+  // - Cuando el usuario viene de una página del servidor
+  // - Cuando ya tenemos los datos de la sesión
+  // - Para evitar requests duplicados
   // ========================================
   const initializeWithServerData = (userEmail, companyData, userTypeParam) => {
     console.log('[AuthContext] Initializing with server data:', {
@@ -35,6 +75,8 @@ export function AuthProvider({ children }) {
       userType: userTypeParam
     });
 
+    // ESTABLECER DATOS INICIALES
+    // Estos datos vienen del servidor y están listos para usar
     setUsuarioActual(userEmail);
     setEmpresaActual(companyData);
     setUserType(userTypeParam);
@@ -48,8 +90,23 @@ export function AuthProvider({ children }) {
 
   // ========================================
   // FUNCIÓN: Formatear datos de empresa
-  // Qué hace: Convierte datos raw en estructura esperada
-  // Por qué: Mantener compatibilidad con código existente
+  // 
+  // ¿QUÉ HACE ESTA FUNCIÓN?
+  // Convierte los datos raw de la empresa y los field mappings en la estructura
+  // que espera el resto de la aplicación. Es como un "traductor" entre la
+  // base de datos y el formato que usa el frontend.
+  //
+  // ¿POR QUÉ ES NECESARIA?
+  // - Los datos vienen de Supabase en formato "crudo"
+  // - La aplicación espera una estructura específica
+  // - Los field mappings definen qué campos tiene cada empresa
+  // - Sin esta función, la app no sabría qué campos mostrar
+  //
+  // ¿QUÉ VALIDA?
+  // - Que existan los datos de la empresa
+  // - Que existan los field mappings
+  // - Que haya al menos un mapping configurado
+  // - Si algo falta, lanza un error explícito (no fallbacks engañosos)
   // ========================================
   const formatCompanyData = (companyData, mappings) => {
     console.log('[AuthContext] formatCompanyData - Input:', { 
@@ -57,39 +114,30 @@ export function AuthProvider({ children }) {
       mappingsCount: mappings?.length
     });
     
+    // VALIDACIÓN CRÍTICA: Si faltan datos, fallar explícitamente
+    // Esto evita que la app "funcione" con datos incompletos
     if (!companyData || !mappings || mappings.length === 0) {
       console.warn('[AuthContext] formatCompanyData - Missing data, using fallback');
-      return {
-        id: companyData?.id,
-        nombre: companyData?.name,
-        monedas: companyData?.currencies || ['$'],
-        idiomas_disponibles: companyData?.languages || ['es'],
-        paises_telefono: companyData?.phone_countries || ['UY', 'AR', 'ES'],
-        admin_email: companyData?.admin_email,
-        webhook_url: companyData?.webhook_url || 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
-        campos_facturas: {
-          invoice_number: { nombre: 'Número', requerido: true, tipo: 'text' },
-          invoice_amount: { nombre: 'Monto', requerido: true, tipo: 'number' },
-          due_date: { nombre: 'Vencimiento', requerido: false, tipo: 'date' }
-        },
-        campos_contactos: {
-          client_email: { nombre: 'Email', requerido: true, tipo: 'email' },
-          client_name: { nombre: 'Nombre', requerido: true, tipo: 'text' },
-          client_phone: { nombre: 'Teléfono', requerido: false, tipo: 'phone' }
-        }
-      };
+      throw new Error(`[AuthContext] Missing required data: companyData=${!!companyData}, mappings=${!!mappings}, mappingsLength=${mappings?.length || 0}`);
     }
 
+    // CREAR ESTRUCTURA DE CAMPOS DINÁMICA
+    // Los field mappings definen qué campos tiene cada empresa
+    // Esto permite que cada empresa tenga su propia configuración
     const campos_facturas = {};
     const campos_contactos = {};
 
+    // PROCESAR CADA FIELD MAPPING
+    // Cada mapping define un campo que la empresa puede usar
     mappings.forEach((mapping) => {
       const campo = {
-        nombre: mapping.company_field_name,
-        requerido: mapping.is_required,
-        tipo: mapping.data_type || 'text'
+        nombre: mapping.company_field_name,    // Nombre que ve el usuario
+        requerido: mapping.is_required,        // Si es obligatorio
+        tipo: mapping.data_type                // Tipo de dato (text, number, email, etc.)
       };
 
+      // CLASIFICAR POR TIPO DE ARCHIVO
+      // Los campos se separan entre facturas y contactos
       if (mapping.file_type === 'factura') {
         campos_facturas[mapping.internal_field_name] = campo;
       } else if (mapping.file_type === 'cliente') {
@@ -97,16 +145,20 @@ export function AuthProvider({ children }) {
       }
     });
 
+    // RETORNAR ESTRUCTURA FINAL
+    // Esta es la estructura que espera el resto de la aplicación
+    // NOTA: Sin fallbacks - si algo falta, fallará explícitamente
     return {
-      id: companyData.id,
-      nombre: companyData.name,
-      monedas: companyData.currencies || ['$'],
-      idiomas_disponibles: companyData.languages || ['es'],
-      paises_telefono: companyData.phone_countries || ['UY', 'AR', 'ES'],
-      admin_email: companyData.admin_email,
-      webhook_url: companyData.webhook_url || 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
-      campos_facturas,
-      campos_contactos
+      id: companyData.id,                    // ID único de la empresa
+      nombre: companyData.name,              // Nombre de la empresa
+      monedas: companyData.currencies,       // Monedas que usa la empresa
+      idiomas_disponibles: companyData.languages,  // Idiomas disponibles
+      paises_telefono: companyData.phone_countries, // Países para teléfonos
+      admin_email: companyData.admin_email,  // Email del administrador
+      webhook_url: companyData.webhook_url,  // URL del webhook para procesamiento
+      country: companyData.country,          // País principal de la empresa
+      campos_facturas,                       // Campos dinámicos para facturas
+      campos_contactos                       // Campos dinámicos para contactos
     };
   };
 

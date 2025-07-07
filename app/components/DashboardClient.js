@@ -1,8 +1,23 @@
 // ========================================
 // ARCHIVO: app/components/DashboardClient.js
 // COMPONENTE CLIENTE DEL DASHBOARD
-// Qué hace: Client Component que recibe datos del servidor
-// Por qué: Separar Server Components de Client Components
+// 
+// ¿QUÉ HACE ESTE ARCHIVO?
+// Este archivo contiene el componente cliente del dashboard que recibe datos
+// del servidor y los pasa al contexto de autenticación. Es un "puente" entre
+// los datos del servidor y el estado del cliente.
+//
+// ¿POR QUÉ EXISTE?
+// - Next.js 13+ separa Server Components de Client Components
+// - Los Server Components no pueden usar hooks ni estado
+// - Este componente permite usar useAuth() y otros hooks del cliente
+// - Evita problemas de hidratación y sincronización de estado
+//
+// ¿CÓMO FUNCIONA?
+// 1. Recibe datos iniciales del servidor (usuario, empresa, mappings)
+// 2. Formatea los datos de la empresa con los field mappings
+// 3. Inicializa el AuthContext con estos datos
+// 4. Renderiza la interfaz del dashboard
 // ========================================
 
 'use client';
@@ -16,8 +31,23 @@ import Image from 'next/image';
 
 // ========================================
 // FUNCIÓN: Formatear datos de empresa
-// Qué hace: Convierte mappings en estructura esperada
-// Por qué: El AuthContext espera formato específico
+// 
+// ¿QUÉ HACE ESTA FUNCIÓN?
+// Convierte los datos raw de la empresa y los field mappings en la estructura
+// que espera el AuthContext. Es como un "traductor" entre la base de datos
+// y el formato que usa la aplicación.
+//
+// ¿POR QUÉ ES NECESARIA?
+// - Los datos vienen de Supabase en formato "crudo"
+// - El AuthContext espera una estructura específica
+// - Los field mappings definen qué campos tiene cada empresa
+// - Sin esta función, la app no sabría qué campos mostrar
+//
+// ¿QUÉ VALIDA?
+// - Que existan los datos de la empresa
+// - Que existan los field mappings
+// - Que haya al menos un mapping configurado
+// - Si algo falta, lanza un error explícito (no fallbacks engañosos)
 // ========================================
 function formatCompanyData(companyData, mappings) {
   console.log('[DashboardClient] formatCompanyData - Input:', { 
@@ -25,39 +55,29 @@ function formatCompanyData(companyData, mappings) {
     mappingsCount: mappings?.length
   });
 
+  // VALIDACIÓN CRÍTICA: Si faltan datos, fallar explícitamente
+  // Esto evita que la app "funcione" con datos incompletos
   if (!companyData || !mappings || mappings.length === 0) {
-    console.warn('[DashboardClient] formatCompanyData - Missing data, using fallback');
-    return {
-      id: companyData?.id,
-      nombre: companyData?.name,
-      monedas: companyData?.currencies || ['$'],
-      idiomas_disponibles: companyData?.languages || ['es'],
-      paises_telefono: companyData?.phone_countries || ['UY', 'AR', 'ES'],
-      admin_email: companyData?.admin_email,
-      webhook_url: companyData?.webhook_url || 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
-      campos_facturas: {
-        invoice_number: { nombre: 'Número', requerido: true, tipo: 'text' },
-        invoice_amount: { nombre: 'Monto', requerido: true, tipo: 'number' },
-        due_date: { nombre: 'Vencimiento', requerido: false, tipo: 'date' }
-      },
-      campos_contactos: {
-        client_email: { nombre: 'Email', requerido: true, tipo: 'email' },
-        client_name: { nombre: 'Nombre', requerido: true, tipo: 'text' },
-        client_phone: { nombre: 'Teléfono', requerido: false, tipo: 'phone' }
-      }
-    };
+    throw new Error(`[DashboardClient] Missing required data: companyData=${!!companyData}, mappings=${!!mappings}, mappingsLength=${mappings?.length || 0}`);
   }
 
+  // CREAR ESTRUCTURA DE CAMPOS DINÁMICA
+  // Los field mappings definen qué campos tiene cada empresa
+  // Esto permite que cada empresa tenga su propia configuración
   const campos_facturas = {};
   const campos_contactos = {};
 
+  // PROCESAR CADA FIELD MAPPING
+  // Cada mapping define un campo que la empresa puede usar
   mappings.forEach((mapping) => {
     const campo = {
-      nombre: mapping.company_field_name,
-      requerido: mapping.is_required,
-      tipo: mapping.data_type || 'text'
+      nombre: mapping.company_field_name,    // Nombre que ve el usuario
+      requerido: mapping.is_required,        // Si es obligatorio
+      tipo: mapping.data_type                // Tipo de dato (text, number, email, etc.)
     };
 
+    // CLASIFICAR POR TIPO DE ARCHIVO
+    // Los campos se separan entre facturas y contactos
     if (mapping.file_type === 'factura') {
       campos_facturas[mapping.internal_field_name] = campo;
     } else if (mapping.file_type === 'cliente') {
@@ -65,23 +85,41 @@ function formatCompanyData(companyData, mappings) {
     }
   });
 
+  // RETORNAR ESTRUCTURA FINAL
+  // Esta es la estructura que espera el AuthContext
+  // NOTA: Sin fallbacks - si algo falta, fallará explícitamente
   return {
-    id: companyData.id,
-    nombre: companyData.name,
-    monedas: companyData.currencies || ['$'],
-    idiomas_disponibles: companyData.languages || ['es'],
-    paises_telefono: companyData.phone_countries || ['UY', 'AR', 'ES'],
-    admin_email: companyData.admin_email,
-    webhook_url: companyData.webhook_url || 'https://gabrielgru.app.n8n.cloud/webhook/cobranza-multiempresa',
-    campos_facturas,
-    campos_contactos
+    id: companyData.id,                    // ID único de la empresa
+    nombre: companyData.name,              // Nombre de la empresa
+    monedas: companyData.currencies,       // Monedas que usa la empresa
+    idiomas_disponibles: companyData.languages,  // Idiomas disponibles
+    paises_telefono: companyData.phone_countries, // Países para teléfonos
+    admin_email: companyData.admin_email,  // Email del administrador
+    webhook_url: companyData.webhook_url,  // URL del webhook para procesamiento
+    country: companyData.country,          // País principal de la empresa
+    campos_facturas,                       // Campos dinámicos para facturas
+    campos_contactos                       // Campos dinámicos para contactos
   };
 }
 
 // ========================================
 // COMPONENTE: Dashboard del cliente
-// Qué hace: Recibe datos del servidor e inicializa el contexto
-// Por qué: Client Components pueden usar hooks y estado
+// 
+// ¿QUÉ HACE ESTE COMPONENTE?
+// Es el componente principal del dashboard que recibe datos del servidor
+// y los pasa al contexto de autenticación. Es el "punto de entrada"
+// para la interfaz del usuario autenticado.
+//
+// ¿POR QUÉ ES UN CLIENT COMPONENT?
+// - Necesita usar hooks (useAuth, useRouter)
+// - Necesita manejar estado y efectos
+// - Necesita interactividad del usuario
+// - No puede ser un Server Component
+//
+// ¿QUÉ PROPS RECIBE?
+// - initialUser: Datos del usuario autenticado
+// - initialUserData: Datos de la empresa del usuario
+// - initialMappings: Configuración de campos de la empresa
 // ========================================
 export default function DashboardClient({ 
   initialUser, 
@@ -91,6 +129,8 @@ export default function DashboardClient({
   const { initializeWithServerData, logout } = useAuth();
   const router = useRouter();
 
+  // LOGGING PARA DEBUGGING
+  // Ayuda a verificar que los datos lleguen correctamente
   console.log('[DashboardClient] Props received:', {
     initialUser: initialUser?.email,
     initialUserData: initialUserData?.companies?.name,
@@ -99,17 +139,34 @@ export default function DashboardClient({
 
   // ========================================
   // EFECTO: Inicializar contexto con datos del servidor
-  // Qué hace: Pasa los datos del servidor al contexto
-  // Por qué: Evita el loading inicial y problemas de sesión
+  // 
+  // ¿QUÉ HACE ESTE EFECTO?
+  // Se ejecuta una sola vez cuando el componente se monta y toma los datos
+  // que vienen del servidor para inicializar el contexto de autenticación.
+  //
+  // ¿POR QUÉ ES CRÍTICO?
+  // - Sin esto, el AuthContext estaría vacío
+  // - Evita el "loading" inicial molesto
+  // - Previene problemas de hidratación
+  // - Sincroniza el estado del cliente con el servidor
+  //
+  // ¿POR QUÉ DEPENDENCIAS VACÍAS []?
+  // - Solo debe ejecutarse una vez al montar
+  // - Los datos iniciales no cambian durante la sesión
+  // - Evita re-inicializaciones innecesarias
   // ========================================
   useEffect(() => {
     console.log('[DashboardClient] Initializing with server data...');
     
+    // FORMATEAR DATOS DE LA EMPRESA
+    // Convierte los datos raw en la estructura que espera el contexto
     const formattedCompany = formatCompanyData(
       initialUserData.companies, 
       initialMappings
     );
     
+    // INICIALIZAR CONTEXTO
+    // Pasa los datos formateados al AuthContext
     if (formattedCompany) {
       console.log('[DashboardClient] Formatted company:', formattedCompany);
       initializeWithServerData(
@@ -118,7 +175,7 @@ export default function DashboardClient({
         'client'
       );
     }
-  }, []); // ← CAMBIO CRÍTICO: dependencias vacías para ejecutar solo una vez
+  }, []); // ← DEPENDENCIAS VACÍAS: ejecutar solo una vez
 
   const handleLogout = async () => {
     await logout();
