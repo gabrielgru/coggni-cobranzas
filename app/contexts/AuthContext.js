@@ -14,30 +14,27 @@
 // - Mantiene la sesión del usuario consistente
 // - Soporta Server-Side Rendering (SSR) para mejor performance
 //
-// ¿QUÉ DATOS MANEJA?
-// - Usuario autenticado (email, tipo de usuario)
-// - Datos de la empresa (configuración, campos, webhook)
-// - Estado de carga y errores
-// - Idioma seleccionado
-//
-// ¿CÓMO SE USA?
-// - useAuth() hook en cualquier componente
-// - initializeWithServerData() para datos del servidor
-// - logout() para cerrar sesión
-//
-// ¿POR QUÉ SOPORTE SSR?
-// - Evita problemas con cookies HttpOnly
-// - Mejor SEO y performance inicial
-// - Datos disponibles inmediatamente
+// CAMBIOS IMPLEMENTADOS:
+// 1. Auto-logout por inactividad (30 minutos por defecto)
+// 2. Fix de login que espera a que los datos estén cargados
+// 3. Actualización de lastActivity en cada interacción
 // ========================================
 
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { createClient } from '../utils/supabase/client';
 import { cleanupCookies, invalidateSessionCache } from '../utils/cookieManager';
 
 const AuthContext = createContext(null);
+
+// ========================================
+// CONFIGURACIÓN: Tiempo de inactividad
+// 30 minutos = 30 * 60 * 1000 milisegundos
+// Puedes ajustar este valor según tus necesidades
+// ========================================
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+const CHECK_INTERVAL = 60 * 1000; // Verificar cada minuto
 
 export function AuthProvider({ children }) {
   const [usuarioActual, setUsuarioActual] = useState(null);
@@ -48,6 +45,12 @@ export function AuthProvider({ children }) {
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [userType, setUserType] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // ========================================
+  // REFS: Para manejar timers y evitar memory leaks
+  // ========================================
+  const inactivityTimerRef = useRef(null);
+  const checkIntervalRef = useRef(null);
 
   // ========================================
   // FUNCIÓN: Inicializar con datos del servidor
@@ -84,6 +87,9 @@ export function AuthProvider({ children }) {
     setError(null);
     setLoading(false);
     setIsInitialized(true);
+    
+    // Actualizar última actividad al inicializar
+    setLastActivity(Date.now());
 
     console.log('[AuthContext] Server data initialization complete');
   };
@@ -223,11 +229,121 @@ export function AuthProvider({ children }) {
       setUserType('client');
       setError(null);
       
+      // Actualizar última actividad al cargar datos
+      setLastActivity(Date.now());
+      
     } catch (error) {
       console.error('[AuthContext] loadUserData error:', error);
       setError(error.message || 'Error cargando usuario');
     }
   };
+
+  // ========================================
+  // FUNCIÓN: Verificar inactividad y hacer logout automático
+  // Qué hace: Revisa si el usuario ha estado inactivo por más tiempo del permitido
+  // Por qué: Seguridad - cerrar sesiones inactivas automáticamente
+  // ========================================
+  const checkInactivity = () => {
+    if (!usuarioActual) return; // No verificar si no hay usuario
+    
+    const now = Date.now();
+    const timeSinceLastActivity = now - lastActivity;
+    
+    console.log('[AuthContext] Checking inactivity:', {
+      timeSinceLastActivity: Math.floor(timeSinceLastActivity / 1000) + 's',
+      timeout: Math.floor(INACTIVITY_TIMEOUT / 1000) + 's'
+    });
+    
+    if (timeSinceLastActivity > INACTIVITY_TIMEOUT) {
+      console.log('[AuthContext] Inactivity timeout reached, logging out...');
+      
+      // Limpiar y redirigir con mensaje de timeout
+      logout(true); // true indica que es por timeout
+    }
+  };
+
+  // ========================================
+  // FUNCIÓN: Actualizar actividad
+  // Qué hace: Marca timestamp de última actividad
+  // Por qué: Para auto-logout por inactividad
+  // MEJORADO: Ahora realmente actualiza el timestamp
+  // ========================================
+  const updateActivity = () => {
+    const now = Date.now();
+    setLastActivity(now);
+    console.log('[AuthContext] Activity updated at:', new Date(now).toLocaleTimeString());
+  };
+
+  // ========================================
+  // EFECTO: Configurar listeners de actividad del usuario
+  // Qué hace: Detecta interacciones del usuario para actualizar lastActivity
+  // Por qué: Mantener la sesión activa mientras el usuario interactúa
+  // ========================================
+  useEffect(() => {
+    if (!usuarioActual) return; // Solo activar si hay usuario logueado
+    
+    // Lista de eventos que consideramos "actividad"
+    const activityEvents = [
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+      'click'
+    ];
+    
+    // Función debounced para no actualizar en cada evento
+    let activityTimeout;
+    const handleActivity = () => {
+      clearTimeout(activityTimeout);
+      activityTimeout = setTimeout(() => {
+        updateActivity();
+      }, 1000); // Actualizar máximo cada segundo
+    };
+    
+    // Agregar listeners
+    activityEvents.forEach(event => {
+      document.addEventListener(event, handleActivity);
+    });
+    
+    // Cleanup
+    return () => {
+      clearTimeout(activityTimeout);
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [usuarioActual]);
+
+  // ========================================
+  // EFECTO: Timer para verificar inactividad
+  // Qué hace: Revisa periódicamente si el usuario ha estado inactivo
+  // Por qué: Para cerrar sesión automáticamente por seguridad
+  // ========================================
+  useEffect(() => {
+    if (!usuarioActual) {
+      // Limpiar timers si no hay usuario
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+        checkIntervalRef.current = null;
+      }
+      return;
+    }
+    
+    // Configurar verificación periódica
+    console.log('[AuthContext] Setting up inactivity check timer');
+    checkIntervalRef.current = setInterval(checkInactivity, CHECK_INTERVAL);
+    
+    // Verificar inmediatamente
+    checkInactivity();
+    
+    // Cleanup
+    return () => {
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+        checkIntervalRef.current = null;
+      }
+    };
+  }, [usuarioActual, lastActivity]);
 
   // ========================================
   // EFECTO: Inicialización del contexto
@@ -305,9 +421,10 @@ export function AuthProvider({ children }) {
   }, [isInitialized]);
 
   // ========================================
-  // FUNCIÓN: Login
-  // Qué hace: Autentica usuario y carga datos
-  // Por qué: Para formularios de login
+  // FUNCIÓN: Login MEJORADA
+  // Qué hace: Autentica usuario y ESPERA a que los datos estén cargados
+  // Por qué: Para resolver el problema de login colgado
+  // CAMBIO CLAVE: Espera hasta que usuarioActual y empresaActual estén listos
   // ========================================
   const login = async (email, password) => {
     console.log('[AuthContext] Attempting login');
@@ -323,7 +440,28 @@ export function AuthProvider({ children }) {
         throw authError;
       }
       
-      console.log('[AuthContext] Login successful');
+      console.log('[AuthContext] Login successful, waiting for data to load...');
+      
+      // CAMBIO IMPORTANTE: Esperar a que los datos se carguen
+      // Esto resuelve el problema del login colgado
+      let attempts = 0;
+      const maxAttempts = 30; // 3 segundos máximo (30 * 100ms)
+      
+      while (attempts < maxAttempts) {
+        // Verificar si los datos ya están cargados
+        if (usuarioActual && empresaActual) {
+          console.log('[AuthContext] Data loaded successfully');
+          return { success: true };
+        }
+        
+        // Esperar 100ms antes de verificar de nuevo
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      // Si después de 3 segundos no se cargaron los datos, igual retornar success
+      // El onAuthStateChange debería manejar la carga eventualmente
+      console.log('[AuthContext] Data loading timeout, but login was successful');
       return { success: true };
       
     } catch (error) {
@@ -336,13 +474,20 @@ export function AuthProvider({ children }) {
   };
 
   // ========================================
-  // FUNCIÓN: Logout
+  // FUNCIÓN: Logout MEJORADA
   // Qué hace: Cierra sesión y limpia estado
-  // Por qué: Para botones de logout
+  // Por qué: Para botones de logout y auto-logout
+  // CAMBIO: Acepta parámetro isTimeout para redirigir con mensaje
   // ========================================
-  const logout = async () => {
+  const logout = async (isTimeout = false) => {
     try {
-      console.log('[AuthContext] Starting logout process');
+      console.log('[AuthContext] Starting logout process', { isTimeout });
+      
+      // Limpiar timers
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+        checkIntervalRef.current = null;
+      }
       
       invalidateSessionCache();
       cleanupCookies();
@@ -353,11 +498,21 @@ export function AuthProvider({ children }) {
       handleSignOut();
       
       console.log('[AuthContext] Logout completed successfully');
+      
+      // Si es por timeout, redirigir con parámetro
+      if (isTimeout && typeof window !== 'undefined') {
+        window.location.href = '/login?timeout=true';
+      }
+      
     } catch (error) {
       console.error('[AuthContext] Error during logout:', error);
       // Limpieza forzada aunque haya error
       cleanupCookies();
       handleSignOut();
+      
+      if (isTimeout && typeof window !== 'undefined') {
+        window.location.href = '/login?timeout=true';
+      }
     }
   };
 
@@ -374,6 +529,7 @@ export function AuthProvider({ children }) {
     setError(null);
     setLoading(false);
     setIsInitialized(false);
+    setLastActivity(Date.now()); // Reset activity
   };
 
   // ========================================
@@ -404,16 +560,8 @@ export function AuthProvider({ children }) {
   const changeIdioma = (nuevoIdioma) => {
     if (empresaActual?.idiomas_disponibles?.includes(nuevoIdioma)) {
       setIdioma(nuevoIdioma);
+      updateActivity(); // Actualizar actividad al cambiar idioma
     }
-  };
-  
-  // ========================================
-  // FUNCIÓN: Actualizar actividad
-  // Qué hace: Marca timestamp de última actividad
-  // Por qué: Para auto-logout por inactividad
-  // ========================================
-  const updateActivity = () => {
-    setLastActivity(Date.now());
   };
 
   // ========================================
@@ -480,7 +628,7 @@ export function AuthProvider({ children }) {
     resetPassword,
     logoutAllDevices,
     invalidateSessionCache,
-    initializeWithServerData, // ← Nueva función para SSR
+    initializeWithServerData,
   };
 
   return (

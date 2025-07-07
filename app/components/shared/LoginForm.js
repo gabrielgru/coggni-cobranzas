@@ -1,9 +1,20 @@
+// ========================================
+// ARCHIVO: app/components/shared/LoginForm.js
+// FORMULARIO DE LOGIN MEJORADO
+// 
+// CAMBIOS IMPLEMENTADOS:
+// 1. Mejor feedback visual durante el proceso de login
+// 2. Redirección más suave después del login exitoso
+// 3. Manejo mejorado de errores y estados de carga
+// ========================================
+
 'use client';
 
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { TEXTOS } from '../../utils/constants';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 export default function LoginForm({ 
   onSuccess, 
@@ -14,7 +25,9 @@ export default function LoginForm({
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
   const { login, idioma } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -38,14 +51,25 @@ export default function LoginForm({
       
       if (result.success) {
         console.log('[LoginForm] Login successful');
+        setLoginSuccess(true);
+        
         // Llamar callback de éxito si existe
         if (onSuccess) {
           onSuccess(result);
         }
+        
+        // Esperar un momento para mostrar el estado de éxito
+        // y luego redirigir de forma más suave
+        setTimeout(() => {
+          // Usar router.push en lugar de window.location para una transición más suave
+          router.push('/collections');
+        }, 500);
+        
       } else {
         console.error('[LoginForm] Login failed:', result.error);
         // Mostrar el error real que viene del backend
         setError(result.error || 'Usuario o contraseña incorrectos');
+        setIsLoading(false);
       }
     } catch (err) {
       console.error('[LoginForm] Login exception:', err);
@@ -57,12 +81,32 @@ export default function LoginForm({
       } else {
         setError('Error al iniciar sesión. Por favor intente nuevamente.');
       }
-    } finally {
       setIsLoading(false);
     }
   };
 
   const textos = TEXTOS[idioma]?.login || TEXTOS.es.login;
+
+  // Si el login fue exitoso, mostrar mensaje de éxito
+  if (loginSuccess) {
+    return (
+      <div className="login-form">
+        <div className="success-state">
+          <div className="success-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <h2 className="success-title">¡Bienvenido!</h2>
+          <p className="success-message">Iniciando sesión...</p>
+          <div className="spinner-container">
+            <span className="spinner"></span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-form">
@@ -110,13 +154,18 @@ export default function LoginForm({
             autoComplete="current-password"
             disabled={isLoading}
             placeholder="••••••••"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !isLoading) {
+                handleSubmit(e);
+              }
+            }}
           />
         </div>
 
         <button 
           type="submit" 
           className="login-button"
-          disabled={isLoading}
+          disabled={isLoading || !usuario || !password}
         >
           {isLoading ? (
             <>
@@ -166,6 +215,48 @@ export default function LoginForm({
           text-align: center;
         }
 
+        .success-state {
+          text-align: center;
+          padding: 48px 24px;
+        }
+
+        .success-icon {
+          margin-bottom: 24px;
+          color: #10b981;
+          display: inline-block;
+          animation: checkmark 0.5s ease-in-out;
+        }
+
+        .success-title {
+          font-size: 24px;
+          font-weight: 600;
+          color: var(--text-primary);
+          margin: 0 0 12px 0;
+        }
+
+        .success-message {
+          color: var(--text-secondary);
+          margin: 0 0 24px 0;
+        }
+
+        .spinner-container {
+          margin-top: 24px;
+        }
+
+        @keyframes checkmark {
+          0% {
+            transform: scale(0) rotate(-45deg);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.2) rotate(-45deg);
+          }
+          100% {
+            transform: scale(1) rotate(0);
+            opacity: 1;
+          }
+        }
+
         .session-note {
           display: flex;
           align-items: center;
@@ -211,6 +302,10 @@ export default function LoginForm({
         @media (max-width: 480px) {
           .login-title-modern {
             font-size: 24px;
+          }
+          
+          .success-title {
+            font-size: 20px;
           }
         }
       `}</style>
