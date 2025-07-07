@@ -474,44 +474,94 @@ export function AuthProvider({ children }) {
   };
 
   // ========================================
-  // FUNCIÓN: Logout MEJORADA
-  // Qué hace: Cierra sesión y limpia estado
-  // Por qué: Para botones de logout y auto-logout
-  // CAMBIO: Acepta parámetro isTimeout para redirigir con mensaje
+  // FUNCIÓN: Logout CORREGIDA
+  // Qué hace: Cierra sesión y limpia TODAS las cookies
+  // Por qué: Para resolver el problema de re-autenticación
+  // CAMBIOS CLAVE:
+  // 1. Limpia listeners ANTES del logout
+  // 2. Limpia cookies de Supabase
+  // 3. Usa window.location.href para forzar recarga completa
   // ========================================
   const logout = async (isTimeout = false) => {
     try {
       console.log('[AuthContext] Starting logout process', { isTimeout });
       
-      // Limpiar timers
+      // PASO 1: Limpiar timers inmediatamente
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
         checkIntervalRef.current = null;
       }
       
-      invalidateSessionCache();
-      cleanupCookies();
-      
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      
+      // PASO 2: Limpiar estado local PRIMERO
       handleSignOut();
       
-      console.log('[AuthContext] Logout completed successfully');
+      // PASO 3: Invalidar cache de sesión
+      invalidateSessionCache();
       
-      // Si es por timeout, redirigir con parámetro
-      if (isTimeout && typeof window !== 'undefined') {
-        window.location.href = '/login?timeout=true';
+      // PASO 4: Limpiar TODAS las cookies (Coggni + Supabase)
+      cleanupCookies();
+      
+      // NUEVO: Limpiar específicamente cookies de Supabase
+      if (typeof document !== 'undefined') {
+        // Obtener todas las cookies
+        const allCookies = document.cookie.split(';');
+        
+        // Buscar y eliminar cookies de Supabase (empiezan con 'sb-')
+        allCookies.forEach(cookie => {
+          const eqPos = cookie.indexOf('=');
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          
+          // Eliminar cookies de Supabase
+          if (name.startsWith('sb-') || name.includes('supabase')) {
+            // Eliminar con diferentes combinaciones de path y domain
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname};`;
+            
+            console.log('[AuthContext] Removed Supabase cookie:', name);
+          }
+        });
+      }
+      
+      // PASO 5: Crear cliente fresco para logout
+      const supabase = createClient();
+      
+      // PASO 6: Intentar logout en Supabase
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error('[AuthContext] Supabase signOut error:', error);
+        } else {
+          console.log('[AuthContext] Supabase signOut successful');
+        }
+      } catch (signOutError) {
+        console.error('[AuthContext] Error during signOut:', signOutError);
+      }
+      
+      // PASO 7: Esperar un momento para asegurar que todo se limpie
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('[AuthContext] Logout completed, redirecting...');
+      
+      // PASO 8: Forzar navegación completa (no usar router.push)
+      // Esto es CRÍTICO para evitar que el middleware re-autentique
+      if (typeof window !== 'undefined') {
+        if (isTimeout) {
+          window.location.href = '/login?timeout=true';
+        } else {
+          window.location.href = '/login';
+        }
       }
       
     } catch (error) {
       console.error('[AuthContext] Error during logout:', error);
-      // Limpieza forzada aunque haya error
-      cleanupCookies();
-      handleSignOut();
       
-      if (isTimeout && typeof window !== 'undefined') {
-        window.location.href = '/login?timeout=true';
+      // En caso de error, forzar limpieza y redirección
+      handleSignOut();
+      cleanupCookies();
+      
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login?error=logout';
       }
     }
   };

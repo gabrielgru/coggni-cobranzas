@@ -1,4 +1,12 @@
-// app/utils/cookieManager.js - Utilidades para manejo consistente de cookies
+// ========================================
+// ARCHIVO: app/utils/cookieManager.js
+// UTILIDADES MEJORADAS PARA COOKIES
+// 
+// CAMBIOS IMPLEMENTADOS:
+// 1. Nueva función cleanupSupabaseCookies()
+// 2. cleanupCookies() ahora limpia TODO por defecto
+// 3. Mejor debugging de cookies
+// ========================================
 
 export const COGGNI_COOKIES = [
   'coggni-user',
@@ -10,19 +18,25 @@ export const COGGNI_COOKIES = [
 ];
 
 /**
- * Limpia todas las cookies de Coggni
+ * Limpia TODAS las cookies (Coggni + Supabase)
  * @param {Object} options - Opciones de limpieza
  * @param {Array} options.except - Cookies a mantener
  * @param {string} options.domain - Dominio de las cookies
+ * @param {boolean} options.includeSupabase - Si limpiar cookies de Supabase (default: true)
  */
 export const cleanupCookies = (options = {}) => {
-  const { except = [], domain = null } = options;
+  const { 
+    except = [], 
+    domain = null,
+    includeSupabase = true // NUEVO: Por defecto limpia TODO
+  } = options;
   
   if (typeof document === 'undefined') {
     console.warn('[CookieManager] cleanupCookies called in non-browser environment');
     return;
   }
   
+  // Limpiar cookies de Coggni
   COGGNI_COOKIES.forEach(cookieName => {
     if (!except.includes(cookieName)) {
       // Limpiar con y sin domain para asegurar eliminación completa
@@ -36,7 +50,60 @@ export const cleanupCookies = (options = {}) => {
     }
   });
   
+  // NUEVO: Limpiar cookies de Supabase si se solicita
+  if (includeSupabase) {
+    cleanupSupabaseCookies();
+  }
+  
   console.log('[CookieManager] Cookies cleaned except:', except);
+};
+
+/**
+ * NUEVA FUNCIÓN: Limpia específicamente las cookies de Supabase
+ * Busca cookies que empiecen con 'sb-' o contengan 'supabase'
+ */
+export const cleanupSupabaseCookies = () => {
+  if (typeof document === 'undefined') {
+    console.warn('[CookieManager] cleanupSupabaseCookies called in non-browser environment');
+    return;
+  }
+  
+  console.log('[CookieManager] Cleaning Supabase cookies...');
+  
+  // Obtener todas las cookies
+  const allCookies = document.cookie.split(';');
+  let cleanedCount = 0;
+  
+  allCookies.forEach(cookie => {
+    const eqPos = cookie.indexOf('=');
+    const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+    
+    // Identificar cookies de Supabase
+    if (name && (name.startsWith('sb-') || name.includes('supabase'))) {
+      // Intentar eliminar con diferentes combinaciones
+      const paths = ['/', '/login', '/collections', '/api'];
+      const domains = [
+        '',
+        window.location.hostname,
+        `.${window.location.hostname}`,
+        'localhost',
+        '.localhost'
+      ];
+      
+      // Probar todas las combinaciones de path y domain
+      paths.forEach(path => {
+        domains.forEach(domain => {
+          const cookieString = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${path}${domain ? `; domain=${domain}` : ''}`;
+          document.cookie = cookieString;
+        });
+      });
+      
+      console.log('[CookieManager] Attempted to remove Supabase cookie:', name);
+      cleanedCount++;
+    }
+  });
+  
+  console.log(`[CookieManager] Cleaned ${cleanedCount} Supabase cookies`);
 };
 
 /**
@@ -130,15 +197,85 @@ export const invalidateSessionCache = () => {
 
 /**
  * Obtiene información de depuración sobre las cookies
- * @returns {Object} Estado actual de las cookies
+ * MEJORADO: Ahora incluye cookies de Supabase
+ * @returns {Object} Estado actual de TODAS las cookies
  */
 export const debugCookies = () => {
-  const cookies = {};
+  const cookies = {
+    coggni: {},
+    supabase: {},
+    other: {}
+  };
   
+  // Debug cookies de Coggni
   COGGNI_COOKIES.forEach(name => {
     const value = getCookieValue(name);
-    cookies[name] = value || 'not set';
+    cookies.coggni[name] = value || 'not set';
   });
   
+  // Debug TODAS las cookies
+  if (typeof document !== 'undefined') {
+    const allCookies = document.cookie.split(';');
+    
+    allCookies.forEach(cookie => {
+      const eqPos = cookie.indexOf('=');
+      if (eqPos > -1) {
+        const name = cookie.substr(0, eqPos).trim();
+        const value = cookie.substr(eqPos + 1).trim();
+        
+        if (name.startsWith('sb-') || name.includes('supabase')) {
+          cookies.supabase[name] = value.substring(0, 20) + '...'; // Solo primeros 20 chars por seguridad
+        } else if (!COGGNI_COOKIES.includes(name)) {
+          cookies.other[name] = value.substring(0, 20) + '...';
+        }
+      }
+    });
+  }
+  
   return cookies;
+};
+
+/**
+ * NUEVA FUNCIÓN: Limpieza total para logout
+ * Limpia absolutamente todas las cookies relacionadas con la sesión
+ */
+export const performCompleteLogout = () => {
+  console.log('[CookieManager] Performing complete logout cleanup...');
+  
+  // 1. Limpiar cookies de Coggni
+  cleanupCookies({ includeSupabase: true });
+  
+  // 2. Invalidar cache
+  invalidateSessionCache();
+  
+  // 3. Limpiar localStorage y sessionStorage
+  if (typeof window !== 'undefined') {
+    try {
+      // Limpiar items específicos de Supabase
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('supabase') || key.includes('sb-'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Lo mismo para sessionStorage
+      keysToRemove.length = 0;
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && (key.includes('supabase') || key.includes('sb-'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => sessionStorage.removeItem(key));
+      
+      console.log('[CookieManager] Cleaned localStorage and sessionStorage');
+    } catch (e) {
+      console.error('[CookieManager] Error cleaning storage:', e);
+    }
+  }
+  
+  console.log('[CookieManager] Complete logout cleanup finished');
 };
