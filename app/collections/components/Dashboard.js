@@ -375,7 +375,7 @@ export default function Dashboard() {
     setStatusMessage({
       show: true,
       type: 'info',
-      title: textos.validando,
+      title: textos.preparando,
       content: 'Analizando archivos...',
       progress: true
     });
@@ -923,7 +923,7 @@ export default function Dashboard() {
               <div className="status-progress" style={{ display: 'flex' }}>
                 <div className={`progress-step ${currentProgressStep === 'validating' ? 'active' : ''} ${['sending', 'completed'].includes(currentProgressStep) ? 'completed' : ''}`}>
                   <span className="progress-dot"></span>
-                  <span>{textos.validando}</span>
+                  <span>{textos.preparando}</span>
                 </div>
                 <div className={`progress-step ${currentProgressStep === 'sending' ? 'active' : ''} ${currentProgressStep === 'completed' ? 'completed' : ''}`}>
                   <span className="progress-dot"></span>

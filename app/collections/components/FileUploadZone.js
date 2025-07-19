@@ -19,13 +19,15 @@ export default function FileUploadZone({
   const textos = TEXTOS[idioma].dashboard;
 
   const handleFileSelect = async (selectedFile) => {
-    if (!selectedFile) return;
-
-    const validExtensions = ['.xlsx', '.xls', '.csv'];
-    const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
-    
-    if (!validExtensions.includes(fileExtension)) {
-      alert('Por favor selecciona un archivo Excel o CSV válido.');
+    if (!selectedFile || !selectedFile.name.match(/\.(xlsx|xls|csv)$/i)) {
+      // Mostrar mensaje de error inline en lugar de alert
+      const errorResult = {
+        valid: false,
+        errors: ['Por favor selecciona un archivo Excel o CSV válido.'],
+        warnings: []
+      };
+      setValidationResult(errorResult);
+      onValidationComplete(errorResult);
       return;
     }
 
@@ -98,7 +100,7 @@ export default function FileUploadZone({
   const renderValidationResults = () => {
     if (!validationResult) return null;
 
-    if (validationResult.valid && validationResult.warnings.length === 0) {
+    if (validationResult.valid && validationResult.warnings.length === 0 && (!validationResult.invalidCurrencies || validationResult.invalidCurrencies === 0)) {
       return (
         <div className="validation-results success">
           <div className="validation-header">
@@ -111,7 +113,7 @@ export default function FileUploadZone({
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="validation-icon">
               <path d="M9 11l3 3L22 4"/>
             </svg>
-            {validationResult.totalRows} {textos.registrosEncontrados}
+            {validationResult.totalRows} {textos.registrosEncontrados} ✓
           </div>
         </div>
       );
@@ -150,16 +152,78 @@ export default function FileUploadZone({
               <line x1="12" y1="9" x2="12" y2="13"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            {validationResult.warnings.length} {textos.advertencias}
+            {validationResult.warnings.length} {validationResult.warnings.length === 1 ? 'observación' : 'observaciones'}
           </div>
-          <div className="validation-details">
-            {validationResult.warnings.slice(0, 5).map((warning, idx) => (
-              <div key={idx} className="validation-item">{warning}</div>
-            ))}
-            {validationResult.warnings.length > 5 && (
-              <div className="validation-item">... y {validationResult.warnings.length - 5} advertencias más</div>
-            )}
-          </div>
+
+          {/* Si hay currencies inválidas, mostrar sección especial */}
+          {validationResult.invalidCurrencies > 0 && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h4 className="font-medium text-yellow-800 mb-2">
+                📋 {validationResult.invalidCurrencies} facturas se filtrarán automáticamente
+              </h4>
+              <p className="text-sm text-yellow-700 mb-2">
+                Monedas aceptadas: {validationResult.validCurrencies.join(', ')}
+              </p>
+              <div className="text-xs text-yellow-600 space-y-1 max-h-24 overflow-auto">
+                {validationResult.invalidCurrencyDetails.slice(0, 5).map((detail, idx) => (
+                  <div key={idx}>
+                    • Fila {detail.fila}: Moneda "{detail.currency}"
+                  </div>
+                ))}
+                {validationResult.invalidCurrencies > 5 && (
+                  <div>... y {validationResult.invalidCurrencies - 5} más</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Resto de warnings si existen */}
+          {validationResult.suspiciousNames > 0 && (
+            <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="mb-3">
+                <h4 className="font-medium text-orange-800 mb-2">
+                  📋 Se encontraron {validationResult.suspiciousNames} nombres para revisar
+                </h4>
+                <div className="text-xs text-orange-700 space-y-1">
+                  {validationResult.warnings.filter(warning => warning.includes('Fila')).slice(0, 5).map((warning, idx) => (
+                    <div key={idx}>• {warning.split(' - ')[0]}</div>
+                  ))}
+                  {validationResult.suspiciousNames > 5 && (
+                    <div>... y {validationResult.suspiciousNames - 5} más</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded p-2">
+                💡 No te preocupes, estos nombres se procesarán automáticamente.
+              </div>
+            </div>
+          )}
+
+          {/* Advertencias generales - nuevas advertencias que no son casos especiales */}
+          {validationResult.warnings && validationResult.warnings.length > 0 && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="text-sm text-blue-700 space-y-1">
+                {validationResult.warnings
+                  .filter(warning => {
+                    // Filtrar advertencias que NO sean casos especiales ya mostrados
+                    const isSpecialCase =
+                      (validationResult.invalidCurrencies > 0 && warning.includes('moneda no aceptada')) ||
+                      (validationResult.suspiciousNames > 0 && warning.includes('Fila')) ||
+                      warning.includes('emails tienen formato inválido'); // Para contactos
+                    return !isSpecialCase;
+                  })
+                  .map((warning, idx) => (
+                    <div key={idx} className="flex items-start">
+                      <span className="text-blue-600 mr-2">•</span>
+                      <span>{warning}</span>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+          )}
+
           {validationResult.warnings.length > 1 && (
             <button className="download-report-btn" onClick={handleDownloadReport}>
               {textos.descargarReporte}

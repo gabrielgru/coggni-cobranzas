@@ -27,3 +27,6 @@ next-env.d.ts
 # OS
 .DS_Store
 Thumbs.db
+
+# Flujos n8n (no subir)
+n8n-flows/

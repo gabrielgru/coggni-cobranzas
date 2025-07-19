@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
+import { validateContactNameSecurity } from './nameValidation.js';
 
 // Normalizar nombres de columnas
 export function normalizeColumnName(name) {
@@ -181,13 +182,23 @@ export async function validateFacturasFile(file, empresaConfig) {
     let invalidCurrencies = 0;
     let invalidSaldos = 0;
     let saldoFormatErrors = [];
+    // Estructura para recopilar detalles de monedas inválidas
+    let invalidCurrencyDetails = [];
+    const empresaTieneMultiplesMonedas = empresaConfig.monedas && empresaConfig.monedas.length > 1;
+    // Cambiar mapeo de columna de moneda
+    const columnaMonedaExiste = columnIndices.invoice_currency !== undefined;
+    let invalidDates = 0;
     
+    // Validación de archivo completo (antes del bucle for)
+    if (empresaTieneMultiplesMonedas && !columnaMonedaExiste) {
+      warnings.push(`La empresa acepta ${empresaConfig.monedas.join(' y ')} pero el archivo no especifica moneda. Todas las facturas se procesarán con la moneda principal.`);
+    }
+
     for (let i = 1; i <= lastDataRowIndex; i++) {
       const row = data[i];
       if (!row || row.length === 0 || row.every(cell => !cell || String(cell).trim() === '')) {
         continue;
       }
-      
       // Validar fecha de vencimiento si existe y es requerida
       if (columnIndices.vencim !== undefined) {
         const vencim = row[columnIndices.vencim];
@@ -195,25 +206,37 @@ export async function validateFacturasFile(file, empresaConfig) {
           if (!vencim || vencim === '') {
             rowsWithoutVencim++;
           } else if (!validateDate(vencim)) {
-            warnings.push(`Fila ${i + 1}: formato de fecha inválido`);
+            invalidDates++;
           }
         }
       }
-      
-      // Validar moneda si es requerida
-      if (columnIndices.mon !== undefined && empresaConfig.campos_facturas.mon.requerido) {
-        const currency = row[columnIndices.mon];
+      // Validar moneda según contexto de la empresa
+      if (columnaMonedaExiste) {
+        const currency = row[columnIndices.invoice_currency];
+        // Si hay columna de moneda, validar siempre
         if (currency && !validateCurrency(currency, empresaConfig.monedas)) {
           invalidCurrencies++;
+          // Recopilar detalles para mostrar al usuario
+          invalidCurrencyDetails.push({
+            fila: i + 1,
+            currency: currency,
+            invoice: row[columnIndices.docum] || row[columnIndices.numero] || 'Sin número'
+          });
+        } else if (!currency && empresaTieneMultiplesMonedas) {
+          // Si empresa tiene múltiples monedas, DEBE especificar
+          invalidCurrencies++;
+          invalidCurrencyDetails.push({
+            fila: i + 1,
+            currency: '(vacío)',
+            invoice: row[columnIndices.docum] || row[columnIndices.numero] || 'Sin número'
+          });
         }
       }
-      
       // ========================================
       // VALIDACIÓN MEJORADA: Formato numérico en saldo
       // ========================================
       if (columnIndices.saldo !== undefined && empresaConfig.campos_facturas.saldo.requerido) {
         const saldo = row[columnIndices.saldo];
-        
         // Verificar que no esté vacío
         if (saldo === '' || saldo === null || saldo === undefined) {
           invalidSaldos++;
@@ -224,9 +247,8 @@ export async function validateFacturasFile(file, empresaConfig) {
           // Intentar convertir a número
           const saldoStr = String(saldo).trim();
           // Remover separadores de miles y reemplazar coma por punto
-          const saldoNormalized = saldoStr.replace(/[^\d,.-]/g, '').replace(',', '.');
+          const saldoNormalized = saldoStr.replace(/[^ -9,.-]/g, '').replace(',', '.');
           const saldoNum = Number(saldoNormalized);
-          
           if (isNaN(saldoNum)) {
             invalidSaldos++;
             if (saldoFormatErrors.length < 5) {
@@ -236,16 +258,14 @@ export async function validateFacturasFile(file, empresaConfig) {
         }
       }
     }
-    
-    // Agregar errores y advertencias específicos
-    if (rowsWithoutVencim > 0 && empresaConfig.campos_facturas.vencim.requerido) {
-      errors.push(`${rowsWithoutVencim} facturas no tienen fecha de vencimiento`);
+    // Consolidar advertencias de fechas inválidas
+    if (invalidDates > 0) {
+      warnings.push(`${invalidDates} facturas tienen formato de fecha inválido`);
     }
-    
+    // Consolidar advertencias de monedas inválidas
     if (invalidCurrencies > 0) {
-      errors.push(`${invalidCurrencies} facturas tienen moneda inválida (debe ser ${empresaConfig.monedas.join(' o ')})`);
+      warnings.push(`${invalidCurrencies} facturas con moneda no aceptada serán filtradas automáticamente. Todas las demás serán procesadas normalmente.`);
     }
-    
     // ========================================
     // ERRORES MEJORADOS: Detalles de formato de saldo
     // ========================================
@@ -259,16 +279,17 @@ export async function validateFacturasFile(file, empresaConfig) {
         errors.push(`... y ${invalidSaldos - 5} errores más en formato de saldo`);
       }
     }
-    
     // NO advertir sobre filas vacías al final (manejo interno)
-    
     return {
       valid: errors.length === 0,
       errors,
       warnings,
       totalRows: actualDataRows,
       validRows: actualDataRows - invalidCurrencies - invalidSaldos,
-      columns: headers
+      columns: headers,
+      invalidCurrencies: invalidCurrencies,
+      invalidCurrencyDetails: invalidCurrencyDetails,
+      validCurrencies: empresaConfig.monedas || []
     };
     
   } catch (error) {
@@ -380,6 +401,38 @@ export async function validateContactsFile(file, empresaConfig) {
       return { valid: false, errors, warnings };
     }
     
+    // ========================================
+    // VALIDACIÓN: Nombres sospechosos (NUEVA)
+    // ========================================
+    let suspiciousNames = 0;
+    const suspiciousNameExamples = [];
+    const suspiciousNamesByRisk = { alto: 0, medio: 0, bajo: 0 };
+
+    if (columnIndices.client_name !== undefined) {
+      for (let i = 1; i <= lastDataRowIndex; i++) {
+        const row = data[i];
+        if (!row || row.length === 0 || row.every(cell => !cell || String(cell).trim() === '')) {
+          continue;
+        }
+
+        const nombre = row[columnIndices.client_name];
+        if (nombre && nombre !== '') {
+          const validacion = validateContactNameSecurity(nombre);
+
+          if (!validacion.isSecure) {
+            suspiciousNames++;
+            suspiciousNamesByRisk[validacion.riskLevel]++;
+
+            // Recopilar TODOS los nombres problemáticos para el reporte
+            suspiciousNameExamples.push({
+              fila: i + 1,
+              nombre: nombre
+            });
+          }
+        }
+      }
+    }
+
     // Validar emails solo si el campo existe Y es requerido
     let invalidEmails = 0;
     const invalidEmailExamples = [];
@@ -401,17 +454,19 @@ export async function validateContactsFile(file, empresaConfig) {
       }
       
       if (invalidEmails > 0) {
-        warnings.push(`${invalidEmails} emails con formato inválido`);
-        invalidEmailExamples.forEach(example => {
-          warnings.push(example);
-        });
-        if (invalidEmails > 5) {
-          warnings.push(`... y ${invalidEmails - 5} más`);
-        }
+        warnings.push(`${invalidEmails} emails tienen formato inválido`);
       }
     }
     
     // NO advertir sobre filas vacías al final (manejo interno)
+    
+    // warnings: incluir advertencias de nombres sospechosos antes de emails inválidos
+    if (suspiciousNames > 0) {
+      suspiciousNameExamples.forEach(example => {
+        warnings.push(`Fila ${example.fila}: ${example.nombre}`);
+      });
+      // Eliminado: no agregar '... y X más' a warnings
+    }
     
     return {
       valid: errors.length === 0,
@@ -419,11 +474,14 @@ export async function validateContactsFile(file, empresaConfig) {
       warnings,
       totalRows: actualDataRows,
       validRows: actualDataRows - invalidEmails,
-      columns: headers
+      columns: headers,
+      suspiciousNames: suspiciousNames,
+      suspiciousNamesByRisk: suspiciousNamesByRisk,
+      suspiciousNameExamples: suspiciousNameExamples
     };
     
   } catch (error) {
-    errors.push(`Error al leer el archivo: ${error.message}`);
+    errors.push(`No se pudo procesar tu archivo. Por favor verifica el formato.`);
     return { valid: false, errors, warnings };
   }
 }
@@ -445,12 +503,26 @@ export function generateErrorReport(validationResult, fileName, type) {
     content += '\n';
   }
   
+  // Mostrar advertencias siempre que existan
   if (validationResult.warnings.length > 0) {
     content += 'ADVERTENCIAS:\n';
     content += '-------------\n';
     validationResult.warnings.forEach((warning, index) => {
       content += `${index + 1}. ${warning}\n`;
     });
+  }
+
+  // En generateErrorReport, agregar sección específica para monedas inválidas
+  if (validationResult.invalidCurrencies > 0) {
+    content += '\nFACTURAS QUE NO SERÁN PROCESADAS:\n';
+    content += '==================================\n';
+    content += `Total: ${validationResult.invalidCurrencies} facturas con moneda inválida\n`;
+    content += `Monedas válidas: ${validationResult.validCurrencies.join(', ')}\n\n`;
+    validationResult.invalidCurrencyDetails.forEach(detail => {
+      content += `Fila ${detail.fila}: Factura ${detail.invoice} - Moneda "${detail.currency}"\n`;
+    });
+    content += '\nIMPORTANTE: Estas facturas serán ignoradas durante el procesamiento.\n';
+    content += 'Por favor, corrija las monedas antes de volver a cargar el archivo.\n\n';
   }
   
   if (validationResult.totalRows) {
